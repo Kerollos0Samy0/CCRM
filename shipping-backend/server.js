@@ -75,10 +75,13 @@ app.post('/api/shipping/create-order', async (req, res) => {
                         break;
                     }
                 }
-                if (input && value) {
-                    input.value = value;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                if (input && value !== undefined && value !== null) {
+                    // Do NOT remove disabled/readonly attributes, as doing so crashes ASP.NET EventValidation
+                    if (!input.disabled && !input.readOnly) {
+                        input.value = value;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 }
             };
             
@@ -90,7 +93,6 @@ app.post('/api/shipping/create-order', async (req, res) => {
             fillField('ملحوظة', orderData.orderNotes || (orderData.notes ? orderData.notes.map(n => n.text).join(' - ') : ''));
             fillField('اجمالى الأوردر', orderData.totalAmount || 0);
             fillField('عدد القطع', (orderData.items || []).reduce((acc, curr) => acc + (Number(curr.quantity)||1), 0) || 1);
-            fillField('تكلفة الشحن', '0'); // Fix for shipping cost required
             
             const govSelect = document.querySelector('select[id$="CityDDL"]');
             if (govSelect) {
@@ -103,7 +105,6 @@ app.post('/api/shipping/create-order', async (req, res) => {
                     matchingOpt = options.find(opt => normalize(opt.text).includes(normGov));
                 }
                 
-                // Fallback to searching the address string for a governorate name
                 if (!matchingOpt && orderData.address) {
                     const normAddr = normalize(orderData.address);
                     matchingOpt = options.find(opt => {
@@ -112,7 +113,6 @@ app.post('/api/shipping/create-order', async (req, res) => {
                     });
                 }
                 
-                // Final fallback: just pick the first valid option (usually Cairo) to bypass the 'Required' error
                 if (!matchingOpt && options.length > 1) {
                     matchingOpt = options[1];
                 }
@@ -124,8 +124,8 @@ app.post('/api/shipping/create-order', async (req, res) => {
             }
         }, order);
 
-        // Wait for any AJAX postback triggered by dropdown changes (like Governorate -> City)
-        await page.waitForNetworkIdle({ idleTime: 1000, timeout: 5000 }).catch(() => {});
+        // HARD WAIT for ASP.NET AJAX UpdatePanel to complete the Governorate -> City dropdown population
+        await new Promise(r => setTimeout(r, 2500));
 
         // Now select the City/District to avoid the "مطلوب" (Required) validation error
         await page.evaluate(() => {
@@ -150,8 +150,8 @@ app.post('/api/shipping/create-order', async (req, res) => {
             }
         });
 
-        // Wait again in case selecting the city also triggers an AutoPostBack
-        await page.waitForNetworkIdle({ idleTime: 1000, timeout: 5000 }).catch(() => {});
+        // HARD WAIT again in case selecting the city also triggers an AutoPostBack to populate shipping cost
+        await new Promise(r => setTimeout(r, 2500));
 
         console.log('Form filled. Clicking save button...');
         
