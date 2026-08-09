@@ -90,6 +90,7 @@ app.post('/api/shipping/create-order', async (req, res) => {
             fillField('ملحوظة', orderData.orderNotes || (orderData.notes ? orderData.notes.map(n => n.text).join(' - ') : ''));
             fillField('اجمالى الأوردر', orderData.totalAmount || 0);
             fillField('عدد القطع', (orderData.items || []).reduce((acc, curr) => acc + (Number(curr.quantity)||1), 0) || 1);
+            fillField('تكلفة الشحن', '0'); // Fix for shipping cost required
             
             const govSelect = document.querySelector('select[id$="CityDDL"]');
             if (govSelect) {
