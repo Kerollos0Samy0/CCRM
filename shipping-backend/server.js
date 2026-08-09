@@ -184,15 +184,21 @@ app.post('/api/shipping/create-order', async (req, res) => {
         // Check if we are still on the same page and if there are errors
         const pageErrors = await page.evaluate(() => {
             if(window.location.href.toLowerCase().includes('addorder')) {
-                const errorElements = Array.from(document.querySelectorAll('.text-danger, .alert-danger, span[style*="color: red"], span[style*="color:red"], .error'));
-                const errTexts = errorElements.map(el => el.innerText.trim()).filter(t => t.length > 0);
+                const errorElements = Array.from(document.querySelectorAll('.text-danger, .alert-danger, span[style*="color: red"], span[style*="color:red"], span[style*="color:Red"], .error'));
+                const errTexts = errorElements.filter(el => window.getComputedStyle(el).display !== 'none').map(el => el.innerText.trim()).filter(t => t.length > 0);
                 if(errTexts.length > 0) return errTexts.join(' | ');
                 
-                // Sometimes it's a SweetAlert
                 const swal = document.querySelector('.swal-text, .swal2-html-container');
-                if(swal) return swal.innerText;
+                if(swal && swal.innerText.includes('خطأ')) return swal.innerText;
+                if(swal && swal.innerText.includes('نجاح')) return null;
                 
-                return "لم يتم الانتقال من الصفحة بعد الحفظ. قد يكون هناك حقل إجباري ناقص (مثل المحافظة أو المدينة).";
+                // If the form didn't navigate, but the fields were cleared, it means success!
+                const nameInput = document.querySelector('input[id$="custNametxt"]');
+                if (nameInput && nameInput.value.trim().length > 0) {
+                    return "لم يقم موقع الشحن بحفظ الأوردر. قد يكون هناك حقل إجباري لم يتم تعبئته (تأكد من وجود المحافظة والمدينة في بيانات العميل).";
+                }
+                
+                return null; // Form was cleared, meaning it successfully submitted!
             }
             return null;
         });
