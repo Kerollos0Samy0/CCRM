@@ -383,119 +383,20 @@ export const DataProvider = ({ children }) => {
         }
 
         // --- CLIENTS ---
-        if (clientsSnap.exists()) {
-          let cData = clientsSnap.data().clients || [];
-          const lsClientsRaw = localStorage.getItem('crm_clients');
-          if (lsClientsRaw && cData.length === 0) {
-              const parsedLsClients = JSON.parse(lsClientsRaw);
-              if (parsedLsClients.length > 0) {
-                  cData = parsedLsClients;
-                  setDoc(clientsRef, { clients: cData, chatMergedV1: true }).catch(console.error);
-                  console.warn('Restored CLIENTS from localStorage');
-              }
-          }
-          
-          
-          // Merge imported clients
-          let changedC = false;
-          importedClients.forEach(ic => {
-              if (!cData.find(c => c.name === ic.name)) {
-                  cData.push(ic);
-                  changedC = true;
-              }
-          });
-          if (changedC) {
-              setDoc(clientsRef, { clients: cData, chatMergedV1: true }).catch(console.error);
-              console.warn('Imported CLIENTS from Google Sheets');
+          if (clientsSnap.exists()) {
+            setClients(clientsSnap.data().clients || []);
+          } else {
+            setClients([]);
           }
 
-          
-          // Force merge new initialClients (imported from importData.js)
-          initialClients.forEach(ic => {
-              if (!cData.find(c => c.name === ic.name)) {
-                  cData.push(ic);
-                  changedC = true;
-              } else {
-                 // Update missing fields
-                 let existing = cData.find(c => c.name === ic.name);
-                 if (ic.phone && !existing.phone) { existing.phone = ic.phone; changedC = true; }
-                 if (ic.church && !existing.church) { existing.church = ic.church; changedC = true; }
-                 if (ic.address && !existing.address) { existing.address = ic.address; changedC = true; }
-              }
-          });
-
-          if (cData.length === 0) {
-              cData = initialClients;
-              setDoc(clientsRef, { clients: cData, chatMergedV1: true }).catch(console.error);
-              console.warn('EMERGENCY: Restored CLIENTS from JSON backup');
-          }
-          setClients(cData);
-        } else {
-          const lsClients = localStorage.getItem('crm_clients');
-          let c = lsClients ? JSON.parse(lsClients) : initialClients;
-          c = mergeClientsWithChat(c);
-          setDoc(clientsRef, { clients: c, chatMergedV1: true }).catch(console.error);
-          setClients(c);
-        }
-
-        // --- PRODUCTS ---
-        if (productsSnap.exists()) {
-          let pData = productsSnap.data().products || [];
-          const lsProductsRaw = localStorage.getItem('crm_products');
-          if (lsProductsRaw && pData.length === 0) {
-              const parsedLsProducts = JSON.parse(lsProductsRaw);
-              if (parsedLsProducts.length > 0) {
-                  pData = parsedLsProducts;
-                  setDoc(productsRef, { products: pData }).catch(console.error);
-                  console.warn('Restored PRODUCTS from localStorage');
-              }
-          }
-          
-          
-          // Merge imported products
-          let changedP = false;
-          importedProducts.forEach(ip => {
-              let existing = pData.find(p => p.name === ip.name);
-              if (!existing) {
-                  pData.push(ip);
-                  changedP = true;
-              } else if (existing.sellPrice === 0 && ip.sellPrice > 0) {
-                  existing.sellPrice = ip.sellPrice;
-                  changedP = true;
-              }
-          });
-          if (changedP) {
-              setDoc(productsRef, { products: pData }).catch(console.error);
-              console.warn('Imported PRODUCTS from Google Sheets');
+          // --- PRODUCTS ---
+          if (productsSnap.exists()) {
+            setProducts(productsSnap.data().products || []);
+          } else {
+            setProducts([]);
           }
 
-          
-          // Force merge new initialProducts (imported from importData.js)
-          initialProducts.forEach(ip => {
-              let existing = pData.find(p => p.name === ip.name);
-              if (!existing) {
-                  pData.push(ip);
-                  changedP = true;
-              } else if (existing.sellPrice === 0 && ip.sellPrice > 0) {
-                  existing.sellPrice = ip.sellPrice;
-                  changedP = true;
-              }
-          });
-
-          if (pData.length === 0) {
-              pData = initialProducts;
-              setDoc(productsRef, { products: pData }).catch(console.error);
-              console.warn('EMERGENCY: Restored PRODUCTS from JSON backup');
-          }
-          setProducts(pData);
-        } else {
-          const lsProducts = localStorage.getItem('crm_products');
-          const p = lsProducts ? JSON.parse(lsProducts) : initialProducts;
-          setDoc(productsRef, { products: p }).catch(console.error);
-          setProducts(p);
-        }
-
-        // --- LEDGER ---
+          // --- LEDGER ---
                   
           if (ledgerSnap.exists()) {
             let txData = ledgerSnap.data().transactions || [];
