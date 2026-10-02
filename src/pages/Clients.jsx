@@ -105,14 +105,29 @@ const Clients = () => {
         
         const fullAddress = [region, addr].filter(Boolean).join(' - ');
 
-        newClients.push({
+        
+        const nameStr = name.toString().trim();
+        const existingIdx = newClients.findIndex(c => c.name === nameStr);
+        
+        const newClient = {
           id: 'client_imp_' + Date.now() + '_' + idCounter++,
-          name: name.toString().trim(),
+          name: nameStr,
           phone: phone.toString().trim(),
           governorate: gov.toString().trim(),
           address: fullAddress.trim(),
           church: church.toString().trim()
-        });
+        };
+
+        if (existingIdx !== -1) {
+           // Merge data to keep whichever has more info
+           const ex = newClients[existingIdx];
+           if (!ex.phone && newClient.phone) ex.phone = newClient.phone;
+           if (!ex.church && newClient.church) ex.church = newClient.church;
+           if (!ex.address && newClient.address) ex.address = newClient.address;
+        } else {
+           newClients.push(newClient);
+        }
+
       });
 
       if (newClients.length > 0) {
