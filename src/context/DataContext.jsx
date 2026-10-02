@@ -464,6 +464,16 @@ export const DataProvider = ({ children }) => {
 
   // ── CLIENTS ──────────────────────────────────────────────────────────────
   const addClient    = (data)            => setClients(prev => [...prev, { id: uuidv4(), ...data }]);
+  
+  const replaceClients = async (newClients) => {
+    try {
+      await setDoc(doc(db, 'crm', 'clients'), { clients: newClients });
+      setClients(newClients);
+    } catch (e) {
+      console.error('Failed to replace clients:', e);
+    }
+  };
+
   const updateClient = (id, fields)      => setClients(prev => prev.map(c => c.id === id ? { ...c, ...fields } : c));
   const deleteClient = (id)              => setClients(prev => prev.filter(c => c.id !== id));
 
@@ -620,7 +630,7 @@ export const DataProvider = ({ children }) => {
     <DataContext.Provider value={{
       orders, columns, columnOrder, archivedOrders,
       tasks, addTask, updateTaskStatus, deleteTask,
-      clients, addClient, updateClient, deleteClient,
+      clients, addClient, updateClient, deleteClient, replaceClients,
       products, addProduct, updateProduct, replaceProducts,
       transactions, addTransaction, deleteTransaction,
       supplies, addSupply,

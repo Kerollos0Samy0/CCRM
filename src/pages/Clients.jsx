@@ -74,6 +74,62 @@ const Clients = () => {
     return result;
   }, [clients, searchTerm, filterGov, sortBy, clientStats]);
 
+  
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await file.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      
+      const ws = workbook.getWorksheet('Clients') || workbook.getWorksheet(1);
+      const newClients = [];
+      let idCounter = 1;
+      
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return; // Skip headers
+        let name = row.getCell(2).text || row.getCell(1).text; // Try B, fallback to A
+        if (!name) return;
+        if (typeof name === 'object' && name.richText) {
+           name = name.richText.map(rt => rt.text).join('');
+        }
+        
+        let phone = row.getCell(3).text || '';
+        let gov = row.getCell(4).text || '';
+        let region = row.getCell(5).text || '';
+        let addr = row.getCell(6).text || '';
+        let church = row.getCell(7).text || '';
+        
+        const fullAddress = [region, addr].filter(Boolean).join(' - ');
+
+        newClients.push({
+          id: 'client_imp_' + Date.now() + '_' + idCounter++,
+          name: name.toString().trim(),
+          phone: phone.toString().trim(),
+          governorate: gov.toString().trim(),
+          address: fullAddress.trim(),
+          church: church.toString().trim()
+        });
+      });
+
+      if (newClients.length > 0) {
+        if (window.confirm(`تم العثور على ${newClients.length} عميل في الشيت. هل تريد استبدال قاعدة العملاء الحالية بهم؟`)) {
+          await replaceClients(newClients);
+          alert("تم رفع الشيت وتحديث العملاء بنجاح!");
+        }
+      } else {
+        alert("لم يتم العثور على عملاء في الشيت.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("حدث خطأ أثناء قراءة الملف.");
+    }
+    e.target.value = null; // reset input
+  };
+
   const handleOpenModal = (client = null) => {
     if (client) {
       setEditingClient(client);
@@ -133,7 +189,13 @@ const Clients = () => {
               style={{ paddingRight: '40px' }}
             />
           </div>
-          <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+          
+            <label className="btn btn-secondary" style={{ cursor: 'pointer', background: 'var(--color-kirolos)', color: 'white', borderColor: 'var(--color-kirolos)' }}>
+              رفع شيت العملاء
+              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileUpload} />
+            </label>
+            <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+
             <Plus size={18} />
             إضافة عميل
           </button>
