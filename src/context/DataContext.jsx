@@ -716,7 +716,7 @@ export const DataProvider = ({ children }) => {
       orders, columns, columnOrder, archivedOrders,
       tasks, addTask, updateTaskStatus, deleteTask,
       clients, addClient, updateClient, deleteClient,
-      products, addProduct, updateProduct,
+      products, addProduct, updateProduct, replaceProducts,
       transactions, addTransaction, deleteTransaction,
       supplies, addSupply,
       profitShares, updateProfitShares,

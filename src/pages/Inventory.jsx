@@ -4,7 +4,7 @@ import { Plus, Edit2, Check, Package, TrendingUp, Download, ClipboardList, Print
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Inventory = () => {
-  const { products, addProduct, updateProduct, supplies, addSupply } = useData();
+  const { products, addProduct, updateProduct, replaceProducts, supplies, addSupply } = useData();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSupplyLogModalOpen, setIsSupplyLogModalOpen] = useState(false);
   const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);
@@ -42,6 +42,62 @@ const Inventory = () => {
   const [formData, setFormData] = useState({
     name: '', type: 'Workshop', buyPrice: 0, sellPrice: 0, stock: 0
   });
+
+  
+  const handleWipeProducts = async () => {
+    if (window.confirm("هل أنت متأكد من مسح جميع المنتجات في المخزن؟ (لا يمكن التراجع)")) {
+      await replaceProducts([]);
+      alert("تم مسح المخزن بنجاح!");
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await file.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      
+      const ws = workbook.getWorksheet('Products') || workbook.getWorksheet(1);
+      const newProducts = [];
+      let idCounter = 1;
+      
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return; // Skip headers
+        let name = row.getCell(1).text;
+        if (!name) return;
+        
+        if (typeof name === 'object' && name.richText) {
+           name = name.richText.map(rt => rt.text).join('');
+        }
+        
+        newProducts.push({
+          id: 'prod_imported_' + Date.now() + '_' + idCounter++,
+          name,
+          type: row.getCell(2).text || 'Other',
+          buyPrice: Number(row.getCell(3).value) || 0,
+          sellPrice: Number(row.getCell(4).value) || 0,
+          stock: Number(row.getCell(10).value) || 0
+        });
+      });
+
+      if (newProducts.length > 0) {
+        if (window.confirm(`تم العثور على ${newProducts.length} منتج في الشيت. هل تريد استبدال المخزن الحالي بهم؟`)) {
+          await replaceProducts(newProducts);
+          alert("تم رفع الشيت وتحديث المخزن بنجاح!");
+        }
+      } else {
+        alert("لم يتم العثور على منتجات في الشيت. تأكد من أن أسماء المنتجات في العمود الأول (A).");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("حدث خطأ أثناء قراءة الملف.");
+    }
+    e.target.value = null; // reset input
+  };
 
   const handleAddProduct = (e) => {
     e.preventDefault();
@@ -106,6 +162,16 @@ const Inventory = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+
+          <button className="btn btn-secondary" onClick={handleWipeProducts} style={{ color: 'var(--color-marina)', borderColor: 'var(--color-marina)' }}>
+            مسح المخزن
+          </button>
+          
+          <label className="btn btn-secondary" style={{ cursor: 'pointer', background: 'var(--color-kirolos)', color: 'white', borderColor: 'var(--color-kirolos)' }}>
+            رفع شيت جديد
+            <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileUpload} />
+          </label>
+
           <input 
             type="text" 
             className="input-field" 
