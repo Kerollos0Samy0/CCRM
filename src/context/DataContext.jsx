@@ -574,6 +574,16 @@ export const DataProvider = ({ children }) => {
 
   // ── PRODUCTS & SUPPLIES ──────────────────────────────────────────────────
   const addProduct    = (data)       => setProducts(prev => [...prev, { id: uuidv4(), ...data, stock: Number(data.stock)||0, buyPrice: Number(data.buyPrice)||0, sellPrice: Number(data.sellPrice)||0 }]);
+  
+  const replaceProducts = async (newProducts) => {
+    try {
+      await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
+      setProducts(newProducts);
+    } catch (e) {
+      console.error('Failed to replace products:', e);
+    }
+  };
+
   const updateProduct = (id, fields) => setProducts(prev => prev.map(p => p.id === id ? { ...p, ...fields } : p));
   const addSupply = (productId, quantity, details) => {
     setProducts(prev => prev.map(p => {
