@@ -577,7 +577,96 @@ export const DataProvider = ({ children }) => {
   const { currentUser } = useAuth();
 
   const [loading,        setLoading]        = useState(true);
-  const [orders,         setOrders]         = useState({});
+  const [orders, setOrders] = useState({});
+
+    // --- OCTOBER WIPE LOGIC ---
+    useEffect(() => {
+        if (currentUser && !localStorage.getItem('october_wiped_v2')) {
+            console.warn('WIPING DATABASE FOR OCTOBER WORKSHOP...');
+            
+            // Reconstruct orders and clients from importedOrders
+            const ordersObj = {};
+            const initialCols = {
+              pending:   { id: 'pending',   title: 'طلبات قيد المراجعة', orderIds: [], color: '#48bb78' },
+              designing: { id: 'designing', title: 'جاري التصميم',          orderIds: [], color: '#f6ad55' },
+              printing:  { id: 'printing',  title: 'في الطباعة',            orderIds: [], color: '#f6e05e' },
+              received:  { id: 'received',  title: 'في التسليم',            orderIds: [], color: '#38b2ac' },
+              ready:     { id: 'ready',     title: 'جاهز ومشحون',   orderIds: [], color: '#ed8936' },
+              shipped:   { id: 'shipped',   title: 'تم الشحن',         orderIds: [], color: '#4299e1' },
+              arrived:   { id: 'arrived',   title: 'مرفوض او ملغي',   orderIds: [], color: '#9f7aea' },
+            };
+            
+            let clientsMap = {};
+            let idCounter = 1;
+            
+            importedOrders.forEach(o => {
+                let orderId = 'order_oct_' + idCounter;
+                idCounter++;
+                
+                let discount = 0;
+                if (o.discount) discount = typeof o.discount === 'object' ? (o.discount.result || 0) : o.discount;
+                let total = 0;
+                if (o.total) total = typeof o.total === 'object' ? (o.total.result || 0) : o.total;
+                
+                ordersObj[orderId] = {
+                    id: orderId,
+                    name: o.name || '',
+                    gov: o.gov || '',
+                    address: o.address || '',
+                    social: o.social || '',
+                    product: o.product || '',
+                    quantity: o.quantity || 1,
+                    price: o.price || 0,
+                    discount: discount,
+                    deposit: o.deposit || 0,
+                    depositMethod: o.depositMethod || '',
+                    totalAmount: total,
+                    status: 'pending',
+                    createdAt: o.date ? new Date(o.date).getTime() : Date.now(),
+                    updatedAt: Date.now(),
+                };
+                initialCols.pending.orderIds.push(orderId);
+                
+                if (o.name && !clientsMap[o.name]) {
+                    clientsMap[o.name] = {
+                        id: 'client_oct_' + Object.keys(clientsMap).length,
+                        name: o.name,
+                        governorate: o.gov || '',
+                        area: o.address || '',
+                        phone: '',
+                        church: ''
+                    };
+                }
+            });
+            
+            const newClients = Object.values(clientsMap);
+            
+            const wipeAsync = async () => {
+                try {
+                    await setDoc(doc(db, 'crm', 'main'), {
+                        orders: ordersObj,
+                        columns: initialCols,
+                        archivedOrders: [],
+                        migratedV31: true
+                    });
+                    await setDoc(doc(db, 'crm', 'clients'), { clients: newClients });
+                    await setDoc(doc(db, 'crm', 'tasks'), { tasks: [] });
+                    await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
+                    await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
+                    // Keep products untouched
+                    
+                    localStorage.setItem('october_wiped_v2', 'true');
+                    alert('تم مسح البيانات القديمة ورفع بيانات أكتوبر بنجاح! يرجى تحديث الصفحة.');
+                    window.location.reload();
+                } catch (e) {
+                    console.error("Wipe failed:", e);
+                }
+            };
+            wipeAsync();
+        }
+    }, [currentUser]);
+    // --------------------------
+
   const [columns,        setColumns]        = useState(initialColumns);
   const [columnOrder]                       = useState(['pending','designing','printing','received','ready','shipped','arrived']);
   const [tasks,          setTasks]          = useState({});
