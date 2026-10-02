@@ -90,7 +90,7 @@ export const DataProvider = ({ children }) => {
 
     // --- OCTOBER WIPE LOGIC ---
     useEffect(() => {
-        if (currentUser && !localStorage.getItem('october_wiped_final_2')) {
+        if (currentUser && !localStorage.getItem('october_wiped_final_3')) {
             console.warn('CHECKING IF DATABASE NEEDS WIPING FOR OCTOBER WORKSHOP...');
             
             const wipeAsync = async () => {
@@ -98,7 +98,7 @@ export const DataProvider = ({ children }) => {
                     const mainDoc = await getDoc(doc(db, 'crm', 'main'));
                     if (mainDoc.exists() && mainDoc.data().migratedV32) {
                         console.log('Database already wiped by another user.');
-                        localStorage.setItem('october_wiped_final_2', 'true');
+                        localStorage.setItem('october_wiped_final_3', 'true');
                         return;
                     }
 
@@ -183,7 +183,7 @@ export const DataProvider = ({ children }) => {
                     await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
                     await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
                     await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
-                    localStorage.setItem('october_wiped_final_2', 'true');
+                    localStorage.setItem('october_wiped_final_3', 'true');
                     alert('تم مسح البيانات القديمة ورفع بيانات أكتوبر بنجاح! يرجى تحديث الصفحة.');
                     window.location.reload();
                 } catch (e) {
