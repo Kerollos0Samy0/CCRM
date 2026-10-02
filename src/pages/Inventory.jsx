@@ -80,7 +80,7 @@ const Inventory = () => {
           type: row.getCell(2).text || 'Other',
           buyPrice: Number(row.getCell(3).value) || 0,
           sellPrice: Number(row.getCell(4).value) || 0,
-          stock: Number(row.getCell(10).value) || 0
+          stock: Number(row.getCell(5).value) || Number(row.getCell(10).value) || 0
         });
       });
 
