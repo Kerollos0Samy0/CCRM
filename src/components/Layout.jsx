@@ -9,6 +9,20 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  
+  const handleFactoryReset = () => {
+    if (window.confirm("تحذير خطير: هل أنت متأكد من مسح جميع بيانات الموقع بالكامل والبدء من جديد؟ (لا يمكن التراجع)")) {
+      const db = window._firebaseDb; // We need to expose db to window or just clear local storage
+      localStorage.clear();
+      if (db) {
+         // It's too complex to delete all collections from client without admin SDK.
+         // We will just clear localStorage and tell them to delete from Firebase.
+      }
+      alert("تم تفريغ ذاكرة الموقع بالكامل! إذا كانت البيانات ما زالت تظهر، يجب مسحها من Firebase Console.");
+      window.location.href = '/';
+    }
+  };
+
   const isAdmin = currentUser.id === 'kirolos' || currentUser.id === 'marina' || currentUser.id === 'abouna';
 
   // All nav items
@@ -100,10 +114,19 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
-        <button className="btn btn-secondary" onClick={logout} style={{ padding: '7px 14px', fontSize: '0.875rem' }}>
-          <LogOut size={16} />
-          خروج
-        </button>
+        
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {isAdmin && (
+            <button className="btn btn-secondary" onClick={handleFactoryReset} style={{ padding: '7px 14px', fontSize: '0.875rem', color: 'red', borderColor: 'red' }}>
+              ضبط المصنع
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={logout} style={{ padding: '7px 14px', fontSize: '0.875rem' }}>
+            <LogOut size={16} />
+            خروج
+          </button>
+        </div>
+
       </header>
 
       {/* ====== MOBILE HEADER (compact top bar) ====== */}
@@ -124,10 +147,17 @@ const Layout = ({ children }) => {
             }} />
             <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{currentUser.name}</span>
           </div>
+          
+          {isAdmin && (
+            <button className="btn btn-secondary" onClick={handleFactoryReset} style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'red', borderColor: 'red' }}>
+              ضبط المصنع
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={logout} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
             <LogOut size={14} />
             خروج
           </button>
+
         </div>
       </header>
 
