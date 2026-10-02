@@ -10,16 +10,36 @@ const Layout = ({ children }) => {
   const [moreOpen, setMoreOpen] = useState(false);
 
   
-  const handleFactoryReset = () => {
+  const handleFactoryReset = async () => {
     if (window.confirm("تحذير خطير: هل أنت متأكد من مسح جميع بيانات الموقع بالكامل والبدء من جديد؟ (لا يمكن التراجع)")) {
-      const db = window._firebaseDb; // We need to expose db to window or just clear local storage
-      localStorage.clear();
-      if (db) {
-         // It's too complex to delete all collections from client without admin SDK.
-         // We will just clear localStorage and tell them to delete from Firebase.
+      try {
+        // We will trigger a full database wipe by communicating with DataContext or just deleting from localStorage
+        // Since we are in Layout, we don't have direct access to setDoc unless we import it, but it's easier to just do it via DataContext.
+        // Actually, we can just import it here.
+        const { doc, setDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase');
+        
+        await setDoc(doc(db, 'crm', 'main'), { orders: {}, columns: {
+          pending:   { id: 'pending',   title: 'قيد المراجعة', orderIds: [], color: '#48bb78' },
+          designing: { id: 'designing', title: 'جاري التصميم', orderIds: [], color: '#f6ad55' },
+          printing:  { id: 'printing',  title: 'في الطباعة',   orderIds: [], color: '#f6e05e' },
+          received:  { id: 'received',  title: 'في الكنيسة',   orderIds: [], color: '#38b2ac' },
+          ready:     { id: 'ready',     title: 'جاهزة وعايزة تتشحن', orderIds: [], color: '#ed8936' },
+          shipped:   { id: 'shipped',   title: 'في شركة الشحن', orderIds: [], color: '#4299e1' },
+          arrived:   { id: 'arrived',   title: 'أوردرات وصلت', orderIds: [], color: '#9f7aea' },
+        }, archivedOrders: [] });
+        await setDoc(doc(db, 'crm', 'clients'), { clients: [] });
+        await setDoc(doc(db, 'crm', 'products'), { products: [] });
+        await setDoc(doc(db, 'crm', 'tasks'), { tasks: {} });
+        await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
+        await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
+        
+        localStorage.clear();
+        alert("تم فرمتة السحابة والموقع بالكامل بنجاح!");
+        window.location.href = '/';
+      } catch (err) {
+        alert("حدث خطأ أثناء المسح: " + err.message);
       }
-      alert("تم تفريغ ذاكرة الموقع بالكامل! إذا كانت البيانات ما زالت تظهر، يجب مسحها من Firebase Console.");
-      window.location.href = '/';
     }
   };
 
