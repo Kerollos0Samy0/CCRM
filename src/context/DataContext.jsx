@@ -580,7 +580,7 @@ export const DataProvider = ({ children }) => {
       await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
       setProducts(newProducts);
     } catch (e) {
-      console.error('Failed to replace products:', e);
+      console.error('Failed to replace products:', e); alert("Firestore Error: " + e.message);
     }
   };
 
