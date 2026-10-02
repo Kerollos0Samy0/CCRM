@@ -58,7 +58,7 @@ function applyMigrations(rawData) {
     orders: rawData.orders || {},
     columns: rawData.columns || {},
     archivedOrders: rawData.archivedOrders || [],
-    migratedV31: true
+    migratedV32: true
   };
 }
 
@@ -90,15 +90,15 @@ export const DataProvider = ({ children }) => {
 
     // --- OCTOBER WIPE LOGIC ---
     useEffect(() => {
-        if (currentUser && !localStorage.getItem('october_wiped_final')) {
+        if (currentUser && !localStorage.getItem('october_wiped_final_2')) {
             console.warn('CHECKING IF DATABASE NEEDS WIPING FOR OCTOBER WORKSHOP...');
             
             const wipeAsync = async () => {
                 try {
                     const mainDoc = await getDoc(doc(db, 'crm', 'main'));
-                    if (mainDoc.exists() && mainDoc.data().migratedV31) {
+                    if (mainDoc.exists() && mainDoc.data().migratedV32) {
                         console.log('Database already wiped by another user.');
-                        localStorage.setItem('october_wiped_final', 'true');
+                        localStorage.setItem('october_wiped_final_2', 'true');
                         return;
                     }
 
@@ -115,62 +115,75 @@ export const DataProvider = ({ children }) => {
                     };
                     
                     let clientsMap = {};
-                    let idCounter = 1;
-                    
-                    importedOrders.forEach(o => {
-                        let orderId = 'order_oct_' + idCounter;
-                        idCounter++;
-                        
-                        let discount = 0;
-                        if (o.discount) discount = typeof o.discount === 'object' ? (o.discount.result || 0) : o.discount;
-                        let total = 0;
-                        if (o.total) total = typeof o.total === 'object' ? (o.total.result || 0) : o.total;
-                        
-                        ordersObj[orderId] = {
-                            id: orderId,
-                            name: o.name || '',
-                            gov: o.gov || '',
-                            address: o.address || '',
-                            social: o.social || '',
-                            product: o.product || '',
-                            quantity: o.quantity || 1,
-                            price: o.price || 0,
-                            discount: discount,
-                            deposit: o.deposit || 0,
-                            depositMethod: o.depositMethod || '',
-                            totalAmount: total,
-                            status: 'pending',
-                            createdAt: o.date ? new Date(o.date).getTime() : Date.now(),
-                            updatedAt: Date.now(),
-                        };
-                        initialCols.pending.orderIds.push(orderId);
-                        
-                        if (o.name && !clientsMap[o.name]) {
-                            clientsMap[o.name] = {
-                                id: 'client_oct_' + Object.keys(clientsMap).length,
-                                name: o.name,
-                                governorate: o.gov || '',
-                                area: o.address || '',
-                                phone: '',
-                                church: ''
-                            };
-                        }
-                    });
-                    
-                    const newClients = Object.values(clientsMap);
+            let productsMap = {};
+            let idCounter = 1;
+            
+            importedOrders.forEach(o => {
+                let orderId = 'order_oct_' + idCounter;
+                idCounter++;
+                
+                let discount = 0;
+                if (o.discount) discount = typeof o.discount === 'object' ? (o.discount.result || 0) : o.discount;
+                let total = 0;
+                if (o.total) total = typeof o.total === 'object' ? (o.total.result || 0) : o.total;
+                
+                ordersObj[orderId] = {
+                    id: orderId,
+                    name: o.name || '',
+                    gov: o.gov || '',
+                    address: o.address || '',
+                    social: o.social || '',
+                    product: o.product || '',
+                    quantity: o.quantity || 1,
+                    price: o.price || 0,
+                    discount: discount,
+                    deposit: o.deposit || 0,
+                    depositMethod: o.depositMethod || '',
+                    totalAmount: total,
+                    status: 'pending',
+                    createdAt: o.date ? new Date(o.date).getTime() : Date.now(),
+                    updatedAt: Date.now(),
+                };
+                initialCols.pending.orderIds.push(orderId);
+                
+                if (o.name && !clientsMap[o.name]) {
+                    clientsMap[o.name] = {
+                        id: 'client_oct_' + Object.keys(clientsMap).length,
+                        name: o.name,
+                        governorate: o.gov || '',
+                        area: o.address || '',
+                        phone: '',
+                        church: ''
+                    };
+                }
+                
+                if (o.product && !productsMap[o.product]) {
+                    productsMap[o.product] = {
+                        id: 'prod_oct_' + Object.keys(productsMap).length,
+                        name: o.product,
+                        type: 'Other',
+                        buyPrice: 0,
+                        sellPrice: Number(o.price) || 0,
+                        stock: 0
+                    };
+                }
+            });
+            
+            const newClients = Object.values(clientsMap);
+            const newProducts = Object.values(productsMap);
 
                     await setDoc(doc(db, 'crm', 'main'), {
                         orders: ordersObj,
                         columns: initialCols,
                         archivedOrders: [],
-                        migratedV31: true
+                        migratedV32: true
                     });
                     await setDoc(doc(db, 'crm', 'clients'), { clients: newClients });
                     await setDoc(doc(db, 'crm', 'tasks'), { tasks: [] });
                     await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
                     await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
-                    
-                    localStorage.setItem('october_wiped_final', 'true');
+                    await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
+                    localStorage.setItem('october_wiped_final_2', 'true');
                     alert('تم مسح البيانات القديمة ورفع بيانات أكتوبر بنجاح! يرجى تحديث الصفحة.');
                     window.location.reload();
                 } catch (e) {
