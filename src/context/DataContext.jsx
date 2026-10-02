@@ -58,7 +58,7 @@ function applyMigrations(rawData) {
     orders: rawData.orders || {},
     columns: rawData.columns || {},
     archivedOrders: rawData.archivedOrders || [],
-    migratedV32: true
+    migratedV33: true
   };
 }
 
@@ -90,15 +90,15 @@ export const DataProvider = ({ children }) => {
 
     // --- OCTOBER WIPE LOGIC ---
     useEffect(() => {
-        if (currentUser && !localStorage.getItem('october_wiped_final_3')) {
+        if (currentUser && !localStorage.getItem('october_wiped_final_4')) {
             console.warn('CHECKING IF DATABASE NEEDS WIPING FOR OCTOBER WORKSHOP...');
             
             const wipeAsync = async () => {
                 try {
                     const mainDoc = await getDoc(doc(db, 'crm', 'main'));
-                    if (mainDoc.exists() && mainDoc.data().migratedV32) {
+                    if (mainDoc.exists() && mainDoc.data().migratedV33) {
                         console.log('Database already wiped by another user.');
-                        localStorage.setItem('october_wiped_final_3', 'true');
+                        localStorage.setItem('october_wiped_final_4', 'true');
                         return;
                     }
 
@@ -176,14 +176,14 @@ export const DataProvider = ({ children }) => {
                         orders: ordersObj,
                         columns: initialCols,
                         archivedOrders: [],
-                        migratedV32: true
+                        migratedV33: true
                     });
                     await setDoc(doc(db, 'crm', 'clients'), { clients: newClients });
                     await setDoc(doc(db, 'crm', 'tasks'), { tasks: [] });
                     await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
                     await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
-                    await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
-                    localStorage.setItem('october_wiped_final_3', 'true');
+                    await setDoc(doc(db, 'crm', 'products'), { products: importedProducts });
+                    localStorage.setItem('october_wiped_final_4', 'true');
                     alert('تم مسح البيانات القديمة ورفع بيانات أكتوبر بنجاح! يرجى تحديث الصفحة.');
                     window.location.reload();
                 } catch (e) {
