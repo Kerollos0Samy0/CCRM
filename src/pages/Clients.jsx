@@ -91,17 +91,17 @@ const Clients = () => {
       
       ws.eachRow((row, rowNum) => {
         if (rowNum === 1) return; // Skip headers
-        let name = row.getCell(2).text || row.getCell(1).text; // Try B, fallback to A
+        let name = row.getCell(1).text; // A
         if (!name) return;
         if (typeof name === 'object' && name.richText) {
            name = name.richText.map(rt => rt.text).join('');
         }
         
-        let phone = row.getCell(3).text || '';
-        let gov = row.getCell(4).text || '';
-        let region = row.getCell(5).text || '';
-        let addr = row.getCell(6).text || '';
-        let church = row.getCell(7).text || '';
+        let phone = row.getCell(2).text || ''; // B
+        let gov = row.getCell(3).text || ''; // C
+        let region = row.getCell(4).text || ''; // D
+        let addr = row.getCell(5).text || ''; // E
+        let church = row.getCell(6).text || ''; // F
         
         const fullAddress = [region, addr].filter(Boolean).join(' - ');
 
