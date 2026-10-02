@@ -56,7 +56,7 @@ const Inventory = () => {
     if (!file) return;
 
     try {
-      const ExcelJS = await import('exceljs');
+      const ExcelJSModule = await import("exceljs"); const ExcelJS = ExcelJSModule.default || ExcelJSModule;
       const workbook = new ExcelJS.Workbook();
       const buffer = await file.arrayBuffer();
       await workbook.xlsx.load(buffer);
@@ -94,7 +94,7 @@ const Inventory = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("حدث خطأ أثناء قراءة الملف.");
+      alert("حدث خطأ أثناء قراءة الملف: " + err.message);
     }
     e.target.value = null; // reset input
   };
