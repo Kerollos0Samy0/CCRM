@@ -7,20 +7,9 @@ import {
 } from 'firebase/firestore';
 import initialProducts from '../data/products.json';
 import initialClients from '../data/clients.json';
-import migratedData from '../data/migrated_orders.json';
-import migrationV4Data from '../data/migration_v4_data.json';
-import chatClients from '../data/clients_from_chat.json';
-import excelOrders from '../data/orders_from_excel.json';
-import coloredOrdersUpdates from '../data/orders_status_update.json';
-import v7OrdersUpdates from '../data/orders_status_update_v7.json';
-import v8OrdersUpdates from '../data/orders_status_update_v8.json';
-import fullOrdersV11 from '../data/full_orders_v11.json';
 import importedClients from '../data/imported_clients.json';
 import importedProducts from '../data/imported_products.json';
 import importedOrders from '../data/imported_orders.json';
-import missingDataMap from '../data/missing_data_map.json';
-import fixedOrdersV20 from '../data/fixed_orders_v20.json';
-import sheetsOrders from '../data/sheets_orders.json';
 
 
 const DataContext = createContext();
@@ -64,493 +53,13 @@ function normalizeOrder(o) {
 // Run all data-migrations that were previously done against localStorage.
 // Returns { orders, columns, archivedOrders } ready to save to Firestore.
 function applyMigrations(rawData) {
-  let orders = { ...(rawData.orders || {}) };
-  let columns = rawData.columns || { ...initialColumns };
-  // SAFEGUARD: Ensure all columns have an orderIds array
-  Object.values(columns).forEach(c => { if (!c || !c.orderIds || !Array.isArray(c.orderIds)) c.orderIds = []; });
-  let archivedOrders = rawData.archivedOrders || [];
-  let migratedV2 = rawData.migratedV2 || false;
-  let migratedV3 = rawData.migratedV3 || false;
-  let migratedV4 = rawData.migratedV4 || false;
-  let migratedV5 = rawData.migratedV5 || false;
-  let migratedV6 = rawData.migratedV6 || false;
-  let migratedV7 = rawData.migratedV7 || false;
-  let migratedV8 = rawData.migratedV8 || false;
-  let migratedV9 = rawData.migratedV9 || false;
-  let migratedV10 = rawData.migratedV10 || false;
-  let migratedV11 = rawData.migratedV11 || false;
-  let migratedV12 = rawData.migratedV12 || false;
-  let migratedV15 = rawData.migratedV15 || false;
-  let migratedV16 = rawData.migratedV16 || false;
-  let migratedV17 = rawData.migratedV17 || false;
-  let migratedV18 = rawData.migratedV18 || false;
-  let migratedV19 = rawData.migratedV19 || false;
-  let migratedV24 = rawData.migratedV24 || false;
-  let migratedV26 = rawData.migratedV26 || false;
-  let migratedV28 = rawData.migratedV28 || false;
-    let migratedV29 = rawData.migratedV29 || false;
-  let migratedV30 = rawData.migratedV30 || false;
-
-  // normalise every order
-  Object.keys(orders).forEach(id => { orders[id] = normalizeOrder({ ...orders[id] }); });
-  archivedOrders = archivedOrders.map(o => normalizeOrder({ ...o }));
-
-  // v2 – merge Google-Sheets import
-  if (!migratedV2) {
-    orders = { ...orders, ...migratedData.orders };
-    Object.keys(migratedData.columns).forEach(colId => {
-      if (!columns[colId]) columns[colId] = initialColumns[colId] ? { ...initialColumns[colId] } : { id: colId, title: colId, orderIds: [], color: '#ccc' };
-      columns[colId].orderIds = [...new Set([...(columns[colId].orderIds || []), ...(migratedData.columns[colId].orderIds || [])])];
-    });
-    archivedOrders = [...archivedOrders, ...migratedData.archivedOrders];
-    migratedV2 = true;
-  }
-
-  // v3 – rename columns
-  if (!migratedV3) {
-    const colMap = { new_order: 'pending', design: 'designing', printing: 'printing', church: 'ready', shipping: 'shipped', delivered: 'arrived' };
-    const newCols = JSON.parse(JSON.stringify(initialColumns));
-    Object.keys(columns).forEach(oldId => {
-      const newId = colMap[oldId] || oldId;
-      if (newCols[newId] && columns[oldId].orderIds)
-        newCols[newId].orderIds = [...new Set([...newCols[newId].orderIds, ...columns[oldId].orderIds])];
-    });
-    Object.keys(orders).forEach(id => { if (colMap[orders[id].status]) orders[id].status = colMap[orders[id].status]; });
-    columns = newCols;
-    migratedV3 = true;
-  }
-
-  // v4 – archive/ship old orders
-  if (!migratedV4) {
-    migrationV4Data.archiveIds.forEach(id => {
-      if (orders[id] && orders[id].status === 'pending') {
-        archivedOrders.unshift({ ...orders[id], archivedAt: new Date().toISOString() });
-        if (columns.pending) columns.pending.orderIds = columns.pending.orderIds.filter(x => x !== id);
-        delete orders[id];
-      }
-    });
-    migrationV4Data.shippingIds.forEach(id => {
-      if (orders[id] && orders[id].status === 'pending') {
-        orders[id].status = 'shipped';
-        if (columns.pending) columns.pending.orderIds = columns.pending.orderIds.filter(x => x !== id);
-        if (columns.shipped) columns.shipped.orderIds = [id, ...columns.shipped.orderIds];
-      }
-    });
-    migratedV4 = true;
-  }
-
-  // v5 – Import orders from Excel
-  if (!migratedV5) {
-    if (!columns.pending) columns.pending = { id: 'pending', title: 'مطلوبة ولسه متحضرتش', orderIds: [], color: '#48bb78' };
-    
-    Object.values(excelOrders).forEach(newOrder => {
-      // Check if it already exists by name/church to prevent duplicates if ran twice somehow
-      const exists = Object.values(orders).find(o => o && o.name === newOrder.name && o.church === newOrder.church);
-      if (!exists) {
-        orders[newOrder.id] = newOrder;
-        if (columns.pending && columns.pending.orderIds) {
-          columns.pending.orderIds.unshift(newOrder.id);
-        }
-      }
-    });
-    migratedV5 = true;
-  }
-
-  // v6 - Sort imported orders based on their color in the Google Sheet
-  if (!migratedV6) {
-    Object.keys(orders).forEach(orderId => {
-      const order = orders[orderId];
-      if (order && order.createdBy === 'system') { // Only affect imported orders
-        const key = order.name + '_' + order.church;
-        const updateInfo = coloredOrdersUpdates[key];
-        if (updateInfo) {
-          const targetStatus = updateInfo.status; // 'received', 'shipped', 'ready', 'arrived'
-          
-          // Find which column this order is currently in
-          let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(orderId));
-          if (currentCol && currentCol.id !== targetStatus) {
-             // Remove from current column
-             currentCol.orderIds = currentCol.orderIds.filter(id => id !== orderId);
-             
-             // Add to target column
-             if (columns[targetStatus]) {
-                if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-                columns[targetStatus].orderIds.unshift(orderId);
-             }
-          }
-        }
-      }
-    });
-    migratedV6 = true;
-  }
-
-  // v7 - Re-sort imported orders based on boolean columns from original app
-  if (!migratedV7) {
-    Object.keys(orders).forEach(orderId => {
-      const order = orders[orderId];
-      if (order && order.createdBy === 'system') { // Only affect imported orders
-        const key = order.name + '_' + order.church;
-        const updateInfo = v7OrdersUpdates[key];
-        if (updateInfo) {
-          const targetStatus = updateInfo.status;
-          
-          // Find which column this order is currently in
-          let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(orderId));
-          if (currentCol && currentCol.id !== targetStatus) {
-             // Remove from current column
-             currentCol.orderIds = currentCol.orderIds.filter(id => id !== orderId);
-             
-             // Add to target column
-             if (columns[targetStatus]) {
-                if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-                columns[targetStatus].orderIds.unshift(orderId);
-             }
-          }
-        }
-      }
-    });
-    migratedV7 = true;
-  }
-
-  // v8 - Fixed re-sorting based on correct church column index
-  if (!migratedV8) {
-    Object.keys(orders).forEach(orderId => {
-      const order = orders[orderId];
-      if (order && order.createdBy === 'system') { // Only affect imported orders
-        const key = order.name + '_' + order.church;
-        const updateInfo = v8OrdersUpdates[key];
-        if (updateInfo) {
-          const targetStatus = updateInfo.status;
-          
-          let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(orderId));
-          if (currentCol && currentCol.id !== targetStatus) {
-             currentCol.orderIds = currentCol.orderIds.filter(id => id !== orderId);
-             
-             if (columns[targetStatus]) {
-                if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-                columns[targetStatus].orderIds.unshift(orderId);
-             }
-          }
-        }
-      }
-    });
-    migratedV8 = true;
-  }
-
-  // v9 - Recover orphaned imported orders and force them into their correct columns
-  if (!migratedV9) {
-    Object.keys(orders).forEach(orderId => {
-      const order = orders[orderId];
-      if (order && order.createdBy === 'system') {
-        const key = order.name + '_' + order.church;
-        const updateInfo = v8OrdersUpdates[key]; // Use the highly accurate v8 mapping
-        if (updateInfo) {
-          const targetStatus = updateInfo.status;
-          
-          // Find current column (if any)
-          let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(orderId));
-          
-          // Remove from current if wrong
-          if (currentCol && currentCol.id !== targetStatus) {
-             currentCol.orderIds = currentCol.orderIds.filter(id => id !== orderId);
-          }
-          
-          // Force into target column
-          if (columns[targetStatus]) {
-             if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-             if (!columns[targetStatus].orderIds.includes(orderId)) {
-                 columns[targetStatus].orderIds.unshift(orderId);
-             }
-          }
-        }
-      }
-    });
-    migratedV9 = true;
-  }
-
-  // v10 - Apply sorting to ALL orders matching the sheet (bypassing createdBy check)
-  if (!migratedV10) {
-    Object.keys(orders).forEach(orderId => {
-      const order = orders[orderId];
-      if (order) {
-        const key = order.name + '_' + order.church;
-        const updateInfo = v8OrdersUpdates[key];
-        if (updateInfo) {
-          const targetStatus = updateInfo.status;
-          
-          let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(orderId));
-          
-          if (currentCol && currentCol.id !== targetStatus) {
-             currentCol.orderIds = currentCol.orderIds.filter(id => id !== orderId);
-          }
-          
-          if (columns[targetStatus]) {
-             if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-             if (!columns[targetStatus].orderIds.includes(orderId)) {
-                 columns[targetStatus].orderIds.unshift(orderId);
-             }
-          }
-        }
-      }
-    });
-    migratedV10 = true;
-  }
-
-  // v11 - Forcefully restore FULL orders from Google Sheets into correct columns
-  if (!migratedV11) {
-    Object.values(fullOrdersV11).forEach(newOrder => {
-      // Find existing order by name and church
-      let existingOrder = Object.values(orders).find(o => o && o.name === newOrder.name && o.church === newOrder.church);
-      let targetId = newOrder.id;
-
-      if (existingOrder) {
-        targetId = existingOrder.id;
-        // Merge data, but force Google Sheet items and status
-        orders[targetId] = {
-          ...existingOrder,
-          items: newOrder.items,
-          status: newOrder.status,
-          totalAmount: newOrder.totalAmount,
-          paidAmount: newOrder.paidAmount,
-          remainingAmount: newOrder.remainingAmount,
-          createdBy: 'system' // mark as imported
-        };
-      } else {
-        orders[targetId] = newOrder;
-      }
-
-      // Force into correct column
-      const targetStatus = newOrder.status || 'pending';
-      let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(targetId));
-      
-      if (currentCol && currentCol.id !== targetStatus) {
-         currentCol.orderIds = currentCol.orderIds.filter(id => id !== targetId);
-      }
-      
-      if (columns[targetStatus]) {
-         if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-         if (!columns[targetStatus].orderIds.includes(targetId)) {
-             columns[targetStatus].orderIds.unshift(targetId);
-         }
-      }
-    });
-    migratedV11 = true;
-  }
-
-  // v14 - Import from old Google Sheets CRM
-  if (!migratedV15) {
-    importedOrders.forEach(newOrder => {
-      let existingOrder = Object.values(orders).find(o => o && o.name === newOrder.name && o.totalAmount === newOrder.totalAmount && o.createdAt === newOrder.createdAt);
-      let targetId = newOrder.id;
-
-      if (existingOrder) {
-        targetId = existingOrder.id;
-        orders[targetId] = { ...existingOrder, ...newOrder, id: targetId };
-      } else {
-        orders[targetId] = newOrder;
-      }
-
-      const targetStatus = newOrder.status || 'pending';
-      let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(targetId));
-      
-      if (currentCol && currentCol.id !== targetStatus) {
-         currentCol.orderIds = currentCol.orderIds.filter(id => id !== targetId);
-      }
-      
-      if (columns[targetStatus]) {
-         if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-         if (!columns[targetStatus].orderIds.includes(targetId)) {
-             columns[targetStatus].orderIds.unshift(targetId);
-         }
-      }
-    });
-    migratedV15 = true;
-  }
-
-
-  // v14 - Import from old Google Sheets CRM
-  if (!migratedV15) {
-    importedOrders.forEach(newOrder => {
-      let existingOrder = Object.values(orders).find(o => o && o.name === newOrder.name && o.totalAmount === newOrder.totalAmount && o.createdAt === newOrder.createdAt);
-      let targetId = newOrder.id;
-
-      if (existingOrder) {
-        targetId = existingOrder.id;
-        orders[targetId] = { ...existingOrder, ...newOrder, id: targetId };
-      } else {
-        orders[targetId] = newOrder;
-      }
-
-      const targetStatus = newOrder.status || 'pending';
-      let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(targetId));
-      
-      if (currentCol && currentCol.id !== targetStatus) {
-         currentCol.orderIds = currentCol.orderIds.filter(id => id !== targetId);
-      }
-      
-      if (columns[targetStatus]) {
-         if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-         if (!columns[targetStatus].orderIds.includes(targetId)) {
-             columns[targetStatus].orderIds.unshift(targetId);
-         }
-      }
-    });
-    migratedV15 = true;
-  }
-
-
-  
-  // v16 - Import latest live data from Google Sheets
-  if (!rawData.migratedV16) {
-    Object.values(fullOrdersV11).forEach(newOrder => {
-      // Find existing order by name and church
-      let existingOrder = Object.values(orders).find(o => o && o.name === newOrder.name && o.church === newOrder.church);
-      let targetId = newOrder.id;
-
-      if (existingOrder) {
-        targetId = existingOrder.id;
-        // Merge data, but force Google Sheet items and status
-        orders[targetId] = {
-          ...existingOrder,
-          items: newOrder.items,
-          status: newOrder.status,
-          totalAmount: newOrder.totalAmount,
-          paidAmount: newOrder.paidAmount,
-          remainingAmount: newOrder.remainingAmount,
-          createdBy: 'system' // mark as imported
-        };
-      } else {
-        orders[targetId] = newOrder;
-      }
-
-      // Force into correct column
-      const targetStatus = newOrder.status || 'pending';
-      let currentCol = Object.values(columns).find(c => c && c.orderIds && Array.isArray(c.orderIds) && c.orderIds.includes(targetId));
-      
-      if (currentCol && currentCol.id !== targetStatus) {
-         currentCol.orderIds = currentCol.orderIds.filter(id => id !== targetId);
-      }
-      
-      if (columns[targetStatus]) {
-         if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = [];
-         if (!columns[targetStatus].orderIds.includes(targetId)) {
-             columns[targetStatus].orderIds.unshift(targetId);
-         }
-      }
-    });
-    migratedV16 = true;
-    // Setting migratedV16 true is done outside this function (or returned)
-  }
-
-
-  // always sync column titles/colors from code
-  Object.keys(columns).forEach(colId => {
-    if (initialColumns[colId]) {
-      columns[colId].title = initialColumns[colId].title;
-      columns[colId].color = initialColumns[colId].color;
-    }
-  });
-
-    // v17 - Load exactly the active orders and archived orders from fullOrdersV11
-  if (!migratedV17) {
-    if (fullOrdersV11 && fullOrdersV11.active) {
-      // Clear orders and columns entirely to match exact Vercel state
-      orders = {};
-      Object.keys(columns).forEach(colId => { columns[colId].orderIds = []; });
-      Object.values(fullOrdersV11.active).forEach(newOrder => { const orderId = newOrder.id; orders[orderId] = normalizeOrder(newOrder); const targetStatus = newOrder.status || 'pending'; if (columns[targetStatus]) { if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = []; if (!columns[targetStatus].orderIds.includes(orderId)) { columns[targetStatus].orderIds.unshift(orderId); } } });
-      if (fullOrdersV11.archived) { archivedOrders = fullOrdersV11.archived.map(o => normalizeOrder(o)); }
-    }
-    migratedV17 = true;
-  }
-  
-  // v18 - Re-sync with grouped orders
-  if (!rawData.migratedV18) {
-    if (fullOrdersV11 && fullOrdersV11.active) {
-      orders = {};
-      Object.keys(columns).forEach(colId => { columns[colId].orderIds = []; });
-      Object.values(fullOrdersV11.active).forEach(newOrder => { const orderId = newOrder.id; orders[orderId] = normalizeOrder(newOrder); const targetStatus = newOrder.status || 'pending'; if (columns[targetStatus]) { if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = []; if (!columns[targetStatus].orderIds.includes(orderId)) { columns[targetStatus].orderIds.unshift(orderId); } } });
-    }
-    migratedV18 = true;
-  }
-  
-  // v19 - Enrich missing data
-  if (!rawData.migratedV19) {
-    const enrichOrder = (o) => {
-      if (!o.governorate && o.gov) o.governorate = o.gov;
-      if (!o.church && o.region) o.church = o.region;
-      const enrich = missingDataMap[o.name];
-      if (enrich) {
-         if (!o.mobile && enrich.mobile) o.mobile = String(enrich.mobile);
-         if (!o.church && enrich.church) o.church = enrich.church;
-         if (!o.governorate && enrich.governorate) o.governorate = enrich.governorate;
-      }
-    };
-    
-    Object.values(orders).forEach(o => { if (o) enrichOrder(o); });
-    archivedOrders.forEach(o => { if (o) enrichOrder(o); });
-    
-    migratedV19 = true;
-  }
-
-  // v20 - Restore original dates and group by 7 days
-  if (!rawData.migratedV24) {
-    if (fixedOrdersV20 && fixedOrdersV20.active) {
-      orders = {};
-      Object.keys(columns).forEach(colId => { columns[colId].orderIds = []; });
-      Object.values(fixedOrdersV20.active).forEach(newOrder => {
-        const orderId = newOrder.id; 
-        orders[orderId] = normalizeOrder(newOrder); 
-        const targetStatus = newOrder.status || 'pending'; 
-        if (columns[targetStatus]) { 
-           if (!columns[targetStatus].orderIds) columns[targetStatus].orderIds = []; 
-           if (!columns[targetStatus].orderIds.includes(orderId)) { 
-               columns[targetStatus].orderIds.unshift(orderId); 
-           } 
-        } 
-      });
-      if (fixedOrdersV20.archived) {
-          archivedOrders = fixedOrdersV20.archived.map(o => normalizeOrder(o));
-      }
-    }
-    migratedV24 = true;
-  }
-
-  // v26 - Remove undelivered orders before June 1, 2026
-  if (!migratedV26) {
-    const cutoff = new Date('2026-06-01T00:00:00Z').getTime();
-    
-    // Clean active orders
-    const cleanedOrders = {};
-    Object.entries(orders).forEach(([id, o]) => {
-      const dStr = o.createdAt || o.archivedAt;
-      const t = dStr ? new Date(dStr).getTime() : 0;
-      if (t < cutoff && o.status !== 'delivered' && o.status !== 'arrived') {
-        // Drop it from columns
-        Object.keys(columns).forEach(colId => {
-          if (columns[colId].orderIds) {
-            columns[colId].orderIds = columns[colId].orderIds.filter(oid => oid !== id);
-          }
-        });
-      } else {
-        cleanedOrders[id] = o;
-      }
-    });
-    orders = cleanedOrders;
-
-    // Clean archived orders
-    archivedOrders = archivedOrders.filter(o => {
-      const dStr = o.createdAt || o.archivedAt;
-      const t = dStr ? new Date(dStr).getTime() : 0;
-      if (t < cutoff && o.status !== 'delivered' && o.status !== 'arrived') {
-        return false;
-      }
-      return true;
-    });
-    
-    migratedV26 = true;
-  }
-
-  return { orders, columns, archivedOrders, migratedV17, migratedV18, migratedV19, migratedV24, migratedV26, migratedV28, migratedV29, migratedV30, migratedV2, migratedV3, migratedV4, migratedV5, migratedV6, migratedV7, migratedV8, migratedV9, migratedV10, migratedV11, migratedV12, migratedV15, migratedV16 };
+  // Historical migrations removed to prevent data reversion!
+  return {
+    orders: rawData.orders || {},
+    columns: rawData.columns || {},
+    archivedOrders: rawData.archivedOrders || [],
+    migratedV31: true
+  };
 }
 
 function mergeClientsWithChat(currentClients) {
@@ -581,7 +90,7 @@ export const DataProvider = ({ children }) => {
 
     // --- OCTOBER WIPE LOGIC ---
     useEffect(() => {
-        if (currentUser && !localStorage.getItem('october_wiped_v3')) {
+        if (currentUser && !localStorage.getItem('october_wiped_final')) {
             console.warn('CHECKING IF DATABASE NEEDS WIPING FOR OCTOBER WORKSHOP...');
             
             const wipeAsync = async () => {
@@ -589,7 +98,7 @@ export const DataProvider = ({ children }) => {
                     const mainDoc = await getDoc(doc(db, 'crm', 'main'));
                     if (mainDoc.exists() && mainDoc.data().migratedV31) {
                         console.log('Database already wiped by another user.');
-                        localStorage.setItem('october_wiped_v3', 'true');
+                        localStorage.setItem('october_wiped_final', 'true');
                         return;
                     }
 
@@ -661,7 +170,7 @@ export const DataProvider = ({ children }) => {
                     await setDoc(doc(db, 'crm', 'ledger'), { transactions: [], profitShares: [] });
                     await setDoc(doc(db, 'crm', 'supplies'), { supplies: [] });
                     
-                    localStorage.setItem('october_wiped_v3', 'true');
+                    localStorage.setItem('october_wiped_final', 'true');
                     alert('تم مسح البيانات القديمة ورفع بيانات أكتوبر بنجاح! يرجى تحديث الصفحة.');
                     window.location.reload();
                 } catch (e) {
@@ -800,9 +309,7 @@ export const DataProvider = ({ children }) => {
           setOrders(migrated.orders);
           setColumns(migrated.columns);
           setArchivedOrders(migrated.archivedOrders);
-          // Force save to Firebase if we migrated or restored
-          if (!data.migratedV2 || !data.migratedV11 || !data.migratedV12 || !data.migratedV15 || !data.migratedV16 || !data.migratedV17 || !data.migratedV18 || Object.keys(data.orders || {}).length === 0)
-            setDoc(mainRef, migrated, { merge: true }).catch(console.error);
+          // Historical force save removed
         } else {
           const lsOrders   = localStorage.getItem('crm_orders');
           const lsCols     = localStorage.getItem('crm_columns');
