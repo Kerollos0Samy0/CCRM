@@ -41,7 +41,6 @@ const Layout = ({ children }) => {
       <header className="glass-panel desktop-header" style={{
         margin: '16px 16px 0',
         padding: '12px 20px',
-        display: 'flex',
         flexWrap: 'wrap',
         gap: '12px',
         justifyContent: 'space-between',
@@ -111,7 +110,6 @@ const Layout = ({ children }) => {
       <header className="mobile-header glass-panel" style={{
         margin: '12px 12px 0',
         padding: '12px 16px',
-        display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         borderRadius: 'var(--radius-lg)'
