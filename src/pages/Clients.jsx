@@ -4,7 +4,7 @@ import { Search, Plus, MapPin, Phone, User, ShoppingBag, DollarSign, Edit, Trash
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Clients = () => {
-  const { clients, addClient, updateClient, deleteClient, orders, archivedOrders } = useData();
+  const { clients, addClient, updateClient, deleteClient, replaceClients, orders, archivedOrders } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
