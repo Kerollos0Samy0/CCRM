@@ -26,7 +26,6 @@ export const OrdersProvider = ({ children }) => {
   const lastSavedState = useRef('');
 
   useEffect(() => {
-    initialised.current = true;
     const mainRef = doc(db, 'crm', 'main');
     let unsubMain;
 
@@ -38,10 +37,12 @@ export const OrdersProvider = ({ children }) => {
           setOrders(d.orders || {});
           setColumns(d.columns || initialColumns);
           setArchivedOrders(d.archivedOrders || []);
+          lastSavedState.current = JSON.stringify({ orders: d.orders || {}, columns: d.columns || initialColumns, archivedOrders: d.archivedOrders || [] });
         } else {
           setOrders({});
           setColumns(initialColumns);
           setArchivedOrders([]);
+          lastSavedState.current = JSON.stringify({ orders: {}, columns: initialColumns, archivedOrders: [] });
         }
 
         unsubMain = onSnapshot(mainRef, snap => {
@@ -59,6 +60,7 @@ export const OrdersProvider = ({ children }) => {
         console.error("Error bootstrapping orders:", err);
       } finally {
         setLoadingOrders(false);
+        initialised.current = true;
       }
     };
 
