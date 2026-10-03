@@ -2,12 +2,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
 import { useInventory } from '../context/InventoryContext';
 import { useOrders } from '../context/OrdersContext';
-import { useData } from "../context/DataContext";
+
 import { TrendingUp, Package, Users, DollarSign, CheckCircle, MapPin, Map, Star, BarChart } from 'lucide-react';
 
 
 const Analytics = () => {
-  const {      = []   } = useData();
+  
   const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
   const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   
