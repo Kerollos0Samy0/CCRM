@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Wallet, Send } from 'lucide-react';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 
 const OrderTransactions = () => {
-  const { orders, columns, updateOrder } = useData();
+  const {     } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 

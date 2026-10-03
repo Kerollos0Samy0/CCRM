@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useInventory } from '../context/InventoryContext';
 import { useData } from '../context/DataContext';
 import { Plus, Edit2, Check, Package, TrendingUp, Download, ClipboardList, Printer, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Inventory = () => {
-  const { products, addProduct, updateProduct, replaceProducts, supplies, addSupply } = useData();
+  const {         } = useData();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSupplyLogModalOpen, setIsSupplyLogModalOpen] = useState(false);
   const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);

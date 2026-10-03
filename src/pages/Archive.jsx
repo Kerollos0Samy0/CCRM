@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { useInventory } from '../context/InventoryContext';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { Search, Package, Calendar, Phone, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 
 const Archive = () => {
-  const { archivedOrders } = useData();
+  const {    } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGov, setFilterGov] = useState('');
   const [filterChurch, setFilterChurch] = useState('');

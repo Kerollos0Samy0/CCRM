@@ -5,8 +5,8 @@ import { db } from '../firebase';
 import {
   doc, onSnapshot, setDoc, getDoc, updateDoc, deleteField
 } from 'firebase/firestore';
-import initialProducts from '../data/products.json';
-import initialClients from '../data/clients.json';
+
+
 import importedClients from '../data/imported_clients.json';
 import importedProducts from '../data/imported_products.json';
 import importedOrders from '../data/imported_orders.json';
@@ -86,18 +86,18 @@ export const DataProvider = ({ children }) => {
   const { currentUser } = useAuth();
 
   const [loading,        setLoading]        = useState(true);
-  const [orders, setOrders] = useState({});
+  
 
     
 
-  const [columns,        setColumns]        = useState(initialColumns);
-  const [columnOrder]                       = useState(['pending','designing','printing','received','ready','shipped','arrived']);
+  
+  
   const [tasks,          setTasks]          = useState({});
-  const [archivedOrders, setArchivedOrders] = useState([]);
-  const [clients,        setClients]        = useState([]);
-  const [products,       setProducts]       = useState([]);
+  
+  
+  
   const [transactions,   setTransactions]   = useState([]);
-  const [supplies,       setSupplies]       = useState([]); // New state for Supply Log
+  
   const [profitShares,   setProfitShares]   = useState({ workshopDeductions: {}, withdrawals: {} });
 
   const updateProfitShares = (newProfitShares) => {
@@ -112,12 +112,12 @@ export const DataProvider = ({ children }) => {
   const lastSavedState = useRef('');
 
   // ── FIRESTORE DOCUMENT REFS ───────────────────────────────────────────────
-  const mainRef     = doc(db, 'crm', 'main');       // orders + columns + archived
+  // const mainRef     = doc(db, 'crm', 'main');
   const tasksRef    = doc(db, 'crm', 'tasks');
-  const clientsRef  = doc(db, 'crm', 'clients');
-  const productsRef = doc(db, 'crm', 'products');
+  // const clientsRef  = doc(db, 'crm', 'clients');
+  // const productsRef = doc(db, 'crm', 'products');
   const ledgerRef   = doc(db, 'crm', 'ledger');
-  const suppliesRef = doc(db, 'crm', 'supplies');
+  // const suppliesRef = doc(db, 'crm', 'supplies');
 
   // ── helper: load everything from localStorage ─────────────────────────────
   function loadFromLocalStorage() {
@@ -126,10 +126,10 @@ export const DataProvider = ({ children }) => {
       const lsCols     = localStorage.getItem('crm_columns');
       const lsArchived = localStorage.getItem('crm_archived_orders');
       const lsTasks    = localStorage.getItem('crm_tasks');
-      const lsClients  = localStorage.getItem('crm_clients');
-      const lsProducts = localStorage.getItem('crm_products');
+      
+      
       const lsTx       = localStorage.getItem('crm_transactions');
-      const lsSupplies = localStorage.getItem('crm_supplies');
+      
 
       const raw = {
         orders:         lsOrders   ? JSON.parse(lsOrders)   : {},
@@ -138,284 +138,39 @@ export const DataProvider = ({ children }) => {
       };
       
       const migrated = applyMigrations(raw);
-      setOrders(migrated.orders);
-      setColumns(migrated.columns);
-      setArchivedOrders(migrated.archivedOrders);
+      // setOrders(migrated.orders);
+      // setColumns(migrated.columns);
+      // setArchivedOrders(migrated.archivedOrders);
 
       setTasks(lsTasks    ? JSON.parse(lsTasks)    : {});
-      setClients(lsClients  ? JSON.parse(lsClients)  : initialClients);
-      setProducts(lsProducts ? JSON.parse(lsProducts) : initialProducts);
+      
+      
       setTransactions(lsTx ? JSON.parse(lsTx) : []);
-      setSupplies(lsSupplies ? JSON.parse(lsSupplies) : []);
+      
       console.warn('⚠️ Using localStorage (Firestore unavailable) with migrations applied');
     } catch (e) {
       console.error('Failed to load from localStorage:', e);
       // Fallback to empty/initial state + migrations
       const migrated = applyMigrations({ orders: {}, columns: { ...initialColumns }, archivedOrders: [] });
-      setOrders(migrated.orders);
-      setColumns(migrated.columns);
-      setArchivedOrders(migrated.archivedOrders);
+      // setOrders(migrated.orders);
+      // setColumns(migrated.columns);
+      // setArchivedOrders(migrated.archivedOrders);
       setTasks({});
-      setClients(initialClients);
-      setProducts(initialProducts);
+      
+      
       setTransactions([]);
-      setSupplies([]);
+      
     }
   }
 
   // ── LOAD FROM FIRESTORE (once on mount) ──────────────────────────────────
-  useEffect(() => {
-    let unsubMain, unsubTasks, unsubClients, unsubProducts, unsubLedger, unsubSupplies;
-
-    async function bootstrap() {
-      try {
-        // Fetch all documents from Firestore
-        const [mainSnap, tasksSnap, clientsSnap, productsSnap, ledgerSnap, suppliesSnap] = await Promise.all([
-            getDoc(mainRef),
-            getDoc(tasksRef),
-            getDoc(clientsRef),
-            getDoc(productsRef),
-            getDoc(ledgerRef),
-            getDoc(suppliesRef),
-        ]);
-
-          // --- MAIN ---
-          if (mainSnap.exists()) {
-            let data = mainSnap.data();
-            
-            // Temporary cleanup for specific orders
-            if (data.orders) {
-               const samuelOrder = Object.values(data.orders).find(o => o.name === 'صمويل الفريد');
-               if (samuelOrder) {
-                   delete data.orders[samuelOrder.id];
-                   Object.keys(data.columns || {}).forEach(colId => {
-                     if(data.columns[colId].orderIds) {
-                       data.columns[colId].orderIds = data.columns[colId].orderIds.filter(id => id !== samuelOrder.id);
-                     }
-                   });
-                   console.log("Deleted order صمويل الفريد");
-               }
-            }
-
-            // Emergency Restore: If Firebase is empty but local storage has data, restore it
-          const lsOrdersRaw = localStorage.getItem('crm_orders');
-          if (lsOrdersRaw && Object.keys(data.orders || {}).length === 0) {
-              const parsedLsOrders = JSON.parse(lsOrdersRaw);
-              if (Object.keys(parsedLsOrders).length > 0) {
-                  const lsCols = localStorage.getItem('crm_columns');
-                  const lsArchived = localStorage.getItem('crm_archived_orders');
-                  data = {
-                      orders: parsedLsOrders,
-                      columns: lsCols ? JSON.parse(lsCols) : { ...initialColumns },
-                      archivedOrders: lsArchived ? JSON.parse(lsArchived) : []
-                  };
-                  console.warn('Restored MAIN data from localStorage to Firebase');
-              }
-          }
-
-          const migrated = applyMigrations(data);
-          setOrders(migrated.orders);
-          setColumns(migrated.columns);
-          setArchivedOrders(migrated.archivedOrders);
-          // Historical force save removed
-        } else {
-          const lsOrders   = localStorage.getItem('crm_orders');
-          const lsCols     = localStorage.getItem('crm_columns');
-          const lsArchived = localStorage.getItem('crm_archived_orders');
-          const raw = {
-            orders:         lsOrders   ? JSON.parse(lsOrders)   : {},
-            columns:        lsCols     ? JSON.parse(lsCols)      : { ...initialColumns },
-            archivedOrders: lsArchived ? JSON.parse(lsArchived)  : [],
-          };
-          const migrated = applyMigrations(raw);
-          setDoc(mainRef, migrated).catch(console.error);
-          setOrders(migrated.orders);
-          setColumns(migrated.columns);
-          setArchivedOrders(migrated.archivedOrders);
-        }
-
-        // --- TASKS ---
-        if (tasksSnap.exists()) {
-          let tData = tasksSnap.data().tasks || {};
-          const lsTasksRaw = localStorage.getItem('crm_tasks');
-          if (lsTasksRaw && Object.keys(tData).length === 0) {
-              const parsedLsTasks = JSON.parse(lsTasksRaw);
-              if (Object.keys(parsedLsTasks).length > 0) {
-                  tData = parsedLsTasks;
-                  setDoc(tasksRef, { tasks: tData }).catch(console.error);
-                  console.warn('Restored TASKS from localStorage');
-              }
-          }
-          
-          let hasRogueTasks = false;
-          Object.keys(tData).forEach(key => {
-            const t = tData[key];
-            if (t && (t.title?.includes('ديانا عماد') || !t.id)) {
-              delete tData[key];
-              hasRogueTasks = true;
-            }
-          });
-          if (hasRogueTasks) {
-            updateDoc(tasksRef, { tasks: tData }).catch(console.error);
-          }
-          
-          setTasks(tData);
-        } else {
-          const lsTasks = localStorage.getItem('crm_tasks');
-          const t = lsTasks ? JSON.parse(lsTasks) : {};
-          
-          let hasRogueTasks = false;
-          Object.keys(t).forEach(key => {
-            const taskObj = t[key];
-            if (taskObj && (taskObj.title?.includes('ديانا عماد') || !taskObj.id)) {
-              delete t[key];
-              hasRogueTasks = true;
-            }
-          });
-          
-          setDoc(tasksRef, { tasks: t }).catch(console.error);
-          setTasks(t);
-        }
-
-        // --- CLIENTS ---
-          if (clientsSnap.exists()) {
-            setClients(clientsSnap.data().clients || []);
-          } else {
-            setClients([]);
-          }
-
-          // --- PRODUCTS ---
-          if (productsSnap.exists()) {
-            setProducts(productsSnap.data().products || []);
-          } else {
-            setProducts([]);
-          }
-
-          // --- LEDGER ---
-                  
-          if (ledgerSnap.exists()) {
-            let txData = ledgerSnap.data().transactions || [];
-            
-            // Wipe transactions if not done yet
-            const wiped = localStorage.getItem('wiped_tx_v30');
-            if (!wiped) {
-               txData = [];
-               try {
-                 setDoc(ledgerRef, { transactions: [] }).catch(console.error);
-               } catch(e) {}
-               localStorage.setItem('wiped_tx_v30', 'true');
-            }
-            
-            setTransactions(txData);
-            setProfitShares(ledgerSnap.data().profitShares || { workshopDeductions: {}, withdrawals: {} });
-          }
- else {
-          const lsTx = localStorage.getItem('crm_transactions');
-          const tx = lsTx ? JSON.parse(lsTx) : [];
-          setDoc(ledgerRef, { transactions: tx }).catch(console.error);
-          setTransactions(tx);
-        }
-
-        // --- SUPPLIES ---
-        if (suppliesSnap.exists()) {
-          let sData = suppliesSnap.data().supplies || [];
-          const lsSuppliesRaw = localStorage.getItem('crm_supplies');
-          if (lsSuppliesRaw && sData.length === 0) {
-              const parsedLsSupplies = JSON.parse(lsSuppliesRaw);
-              if (parsedLsSupplies.length > 0) {
-                  sData = parsedLsSupplies;
-                  setDoc(suppliesRef, { supplies: sData }).catch(console.error);
-                  console.warn('Restored SUPPLIES from localStorage');
-              }
-          }
-          setSupplies(sData);
-        } else {
-          const lsSupplies = localStorage.getItem('crm_supplies');
-          const s = lsSupplies ? JSON.parse(lsSupplies) : [];
-          setDoc(suppliesRef, { supplies: s }).catch(console.error);
-          setSupplies(s);
-        }
-
-        console.log('✅ Loaded from Firestore');
-
-        // ── REAL-TIME LISTENERS ──────────────────────────────────────────
-        unsubMain = onSnapshot(mainRef, snap => {
-          if (!snap.exists() || !initialised.current) return;
-          const d = snap.data();
-          const newState = { orders: d.orders || {}, columns: d.columns || initialColumns, archivedOrders: d.archivedOrders || [] };
-          lastSavedState.current = JSON.stringify(newState);
-          setOrders(newState.orders);
-          setColumns(newState.columns);
-          setArchivedOrders(newState.archivedOrders);
-        });
-        unsubTasks    = onSnapshot(tasksRef,    snap => { if (snap.exists() && initialised.current) setTasks(snap.data().tasks || {}); });
-        unsubClients  = onSnapshot(clientsRef,  snap => { if (snap.exists() && initialised.current) setClients(snap.data().clients || []); });
-        unsubProducts = onSnapshot(productsRef, snap => { if (snap.exists() && initialised.current) setProducts(snap.data().products || []); });
-        unsubLedger   = onSnapshot(ledgerRef,   snap => { 
-          if (snap.exists() && initialised.current) {
-            setTransactions(snap.data().transactions || []);
-            setProfitShares(snap.data().profitShares || { workshopDeductions: {}, withdrawals: {} });
-          }
-        });
-        unsubSupplies = onSnapshot(suppliesRef, snap => { if (snap.exists() && initialised.current) setSupplies(snap.data().supplies || []); });
-
-      } catch (err) {
-        console.error('Firestore unavailable, using localStorage:', err.message);
-        if (!initialised.current) loadFromLocalStorage();
-      } finally {
-        initialised.current = true;
-        setLoading(false);
-      }
-    }
-
-    bootstrap();
-
-    return () => {
-      unsubMain?.();
-      unsubTasks?.();
-      unsubClients?.();
-      unsubProducts?.();
-      unsubLedger?.();
-      unsubSupplies?.();
-    };
-  }, []); // eslint-disable-line
-
-  // ── SAVE TO FIRESTORE (debounced, only after first load) ─────────────────
-  useEffect(() => {
-    if (!initialised.current) return;
-    
-    const currentStateString = JSON.stringify({ orders, columns, archivedOrders });
-    if (lastSavedState.current === currentStateString) {
-      return; // Skip saving if data matches the last state (prevents infinite loop)
-    }
-
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      lastSavedState.current = currentStateString;
-      const cleanData = JSON.parse(JSON.stringify({ orders, columns, archivedOrders }));
-      // 1. Update main document
-      updateDoc(mainRef, cleanData).catch(console.error);
-
-      // 2. Automatic Hourly Backup (creates one snapshot per hour)
-      try {
-        const d = new Date();
-        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
-        const hourStr = d.getHours().toString().padStart(2, '0');
-        const backupId = `backup_${dateStr}_${hourStr}`;
-        const backupRef = doc(db, 'crm_backups', backupId);
-        // We use setDoc to create/overwrite the hourly snapshot
-        setDoc(backupRef, cleanData).catch(e => console.error('Backup failed:', e));
-      } catch (err) {
-        console.error('Backup error:', err);
-      }
-    }, 800);
-  }, [orders, columns, archivedOrders]); // eslint-disable-line
+  
 
   useEffect(() => { if (initialised.current) setDoc(tasksRef,    { tasks: JSON.parse(JSON.stringify(tasks)) }).catch(console.error); }, [tasks]);       // eslint-disable-line
-  useEffect(() => { if (initialised.current) setDoc(clientsRef,  { clients },      { merge: true }).catch(console.error); }, [clients]);     // eslint-disable-line
-  useEffect(() => { if (initialised.current) setDoc(productsRef, { products },     { merge: true }).catch(console.error); }, [products]);    // eslint-disable-line
+  
+  
   useEffect(() => { if (initialised.current) setDoc(ledgerRef,   { transactions }, { merge: true }).catch(console.error); }, [transactions]);// eslint-disable-line
-  useEffect(() => { if (initialised.current) setDoc(suppliesRef, { supplies },     { merge: true }).catch(console.error); }, [supplies]);    // eslint-disable-line
+  
 
   useEffect(() => { 
       if (initialised.current) {
@@ -463,7 +218,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // ── CLIENTS ──────────────────────────────────────────────────────────────
-  const addClient    = (data)            => setClients(prev => [...prev, { id: uuidv4(), ...data }]);
+  
   
   const replaceClients = async (newClients) => {
     try {
@@ -474,8 +229,8 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const updateClient = (id, fields)      => setClients(prev => prev.map(c => c.id === id ? { ...c, ...fields } : c));
-  const deleteClient = (id)              => setClients(prev => prev.filter(c => c.id !== id));
+  
+  
 
   // ── PRODUCTS & SUPPLIES ──────────────────────────────────────────────────
   const addProduct    = (data)       => setProducts(prev => [...prev, { id: uuidv4(), ...data, stock: Number(data.stock)||0, buyPrice: Number(data.buyPrice)||0, sellPrice: Number(data.sellPrice)||0 }]);
@@ -489,52 +244,17 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const updateProduct = (id, fields) => setProducts(prev => prev.map(p => p.id === id ? { ...p, ...fields } : p));
-  const addSupply = (productId, quantity, details) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === productId) {
-        return { ...p, stock: (Number(p.stock) || 0) + Number(quantity) };
-      }
-      return p;
-    }));
-    setSupplies(prev => [{
-      id: uuidv4(),
-      productId,
-      productName: details.productName || 'Unknown Product',
-      quantity: Number(quantity),
-      date: new Date().toISOString(),
-      suppliedBy: currentUser.id,
-      supplierName: currentUser.name || currentUser.id,
-      notes: details.notes || ''
-    }, ...prev]);
-  };
-
-  // ── LEDGER ───────────────────────────────────────────────────────────────
-  const addTransaction    = (data) => setTransactions(prev => [...prev, { id: uuidv4(), ...data, date: new Date().toISOString(), amount: Number(data.amount)||0 }]);
-  const deleteTransaction = (id)   => setTransactions(prev => prev.filter(t => t.id !== id));
-
-  // ── ORDERS ───────────────────────────────────────────────────────────────
-  const addOrder = (orderData) => {
-    const id = uuidv4();
-    const newOrder = { id, ...orderData, createdBy: currentUser.id, createdAt: new Date().toISOString(), notes: [] };
-    setOrders(prev => ({ ...prev, [id]: newOrder }));
-    setColumns(prev => ({ ...prev, pending: { ...prev.pending, orderIds: [id, ...prev.pending.orderIds] } }));
-    if (orderData.items?.length > 0) {
-      setProducts(prev => {
-        let np = [...prev];
-        orderData.items.forEach(item => {
-          const idx = np.findIndex(p => p.name === item.workshop);
-          if (idx !== -1 && item.quantity) np[idx] = { ...np[idx], stock: np[idx].stock - Number(item.quantity) };
-        });
+  
+  
         return np;
       });
     }
   };
 
-  const updateOrder = (id, updatedData) => setOrders(prev => ({ ...prev, [id]: { ...prev[id], ...updatedData } }));
+  const updateOrder = (id, updatedData) => // setOrders(prev => ({ ...prev, [id]: { ...prev[id], ...updatedData } }));
 
   const addNote = (orderId, text) => {
-    setOrders(prev => {
+    // setOrders(prev => {
       const order = prev[orderId];
       const newNote = { id: uuidv4(), text, createdBy: currentUser.name, timestamp: new Date().toISOString() };
       return { ...prev, [orderId]: { ...order, notes: [...order.notes, newNote] } };
@@ -553,8 +273,8 @@ export const DataProvider = ({ children }) => {
         return np;
       });
     }
-    const newOrders = { ...orders }; delete newOrders[orderId]; setOrders(newOrders);
-    setColumns(prev => {
+    const newOrders = { ...orders }; delete newOrders[orderId]; // setOrders(newOrders);
+    // setColumns(prev => {
       const nc = { ...prev };
       for (const colId in nc) nc[colId] = { ...nc[colId], orderIds: nc[colId].orderIds.filter(id => id !== orderId) };
       return nc;
@@ -567,14 +287,14 @@ export const DataProvider = ({ children }) => {
     if (start === finish) {
       const ids = start.orderIds.filter(id => orders[id] && id !== orderId);
       ids.splice(destinationIndex, 0, orderId);
-      setColumns(prev => ({ ...prev, [start.id]: { ...start, orderIds: ids } }));
+      // setColumns(prev => ({ ...prev, [start.id]: { ...start, orderIds: ids } }));
       return;
     }
       const startIds = start.orderIds.filter(id => orders[id] && id !== orderId);
       const finishIds = finish.orderIds.filter(id => orders[id] && id !== orderId);
       finishIds.splice(destinationIndex, 0, orderId);
       
-      setOrders(prev => ({ ...prev, [orderId]: { ...prev[orderId], status: destinationColId } }));
+      // setOrders(prev => ({ ...prev, [orderId]: { ...prev[orderId], status: destinationColId } }));
 
             if (destinationColId === 'designing' && sourceColId !== 'designing') {
       const movedOrder = orders[orderId];
@@ -601,15 +321,15 @@ export const DataProvider = ({ children }) => {
       }
     }
 
-    setColumns(prev => ({ ...prev, [start.id]: { ...start, orderIds: startIds }, [finish.id]: { ...finish, orderIds: finishIds } }));
+    // setColumns(prev => ({ ...prev, [start.id]: { ...start, orderIds: startIds }, [finish.id]: { ...finish, orderIds: finishIds } }));
   };
 
   const archiveOrder = (orderId) => {
     const orderToArchive = orders[orderId];
     if (!orderToArchive) return;
-    setArchivedOrders(prev => [{ ...orderToArchive, archivedAt: new Date().toISOString() }, ...prev]);
-    const newOrders = { ...orders }; delete newOrders[orderId]; setOrders(newOrders);
-    setColumns(prev => {
+    // setArchivedOrders(prev => [{ ...orderToArchive, archivedAt: new Date().toISOString() }, ...prev]);
+    const newOrders = { ...orders }; delete newOrders[orderId]; // setOrders(newOrders);
+    // setColumns(prev => {
       const nc = { ...prev };
       for (const colId in nc) nc[colId] = { ...nc[colId], orderIds: nc[colId].orderIds.filter(id => id !== orderId) };
       return nc;
@@ -628,14 +348,14 @@ export const DataProvider = ({ children }) => {
 
   return (
     <DataContext.Provider value={{
-      orders, columns, columnOrder, archivedOrders,
+      
       tasks, addTask, updateTaskStatus, deleteTask,
-      clients, addClient, updateClient, deleteClient, replaceClients,
-      products, addProduct, updateProduct, replaceProducts,
+      
+      
       transactions, addTransaction, deleteTransaction,
-      supplies, addSupply,
+      
       profitShares, updateProfitShares,
-      addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder,
+      
     }}>
       {children}
     </DataContext.Provider>

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { useInventory } from '../context/InventoryContext';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
+import { useClients } from '../context/ClientsContext';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -156,7 +159,10 @@ const CustomAutocomplete = ({ value, onChange, options, placeholder, onSelect })
 };
 
 const OrderModal = ({ onClose, orderToEdit }) => {
-  const { addOrder, updateOrder, clients, products, addClient } = useData();
+  const {     } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
+  const { clients, addClient } = useClients();
   const defaultDeadline = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const [formData, setFormData] = useState(() => {

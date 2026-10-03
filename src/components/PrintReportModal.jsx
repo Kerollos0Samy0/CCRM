@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 
 const PrintReportModal = ({ isOpen, onClose }) => {
-  const { orders, columns } = useData();
+  const {    } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
 
   const requiredItems = useMemo(() => {
     let itemsMap = {};

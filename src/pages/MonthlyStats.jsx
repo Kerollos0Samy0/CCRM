@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { useInventory } from '../context/InventoryContext';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { useMonthlyStats } from '../hooks/useMonthlyStats';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, TrendingUp, ShoppingCart, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 const MonthlyStats = () => {
-  const { orders, archivedOrders, transactions, products, profitShares, updateProfitShares } = useData();
+  const {     transactions,  profitShares, updateProfitShares   } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const monthlyStats = useMonthlyStats({ orders, archivedOrders, transactions, products });
   const [expandedMonth, setExpandedMonth] = useState(null);
 

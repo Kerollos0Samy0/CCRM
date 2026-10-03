@@ -1,4 +1,5 @@
 import React from 'react';
+import { useInventory } from '../context/InventoryContext';
 import { useData } from '../context/DataContext';
 import { useMonthlyStats } from '../hooks/useMonthlyStats';
 import { PieChart, Save } from 'lucide-react';
@@ -17,8 +18,20 @@ const historicalWithdrawals = {
 };
 
 const ProfitSharing = () => {
-  const { orders, archivedOrders, transactions, products, profitShares, updateProfitShares } = useData();
+  const {  orders, archivedOrders, transactions,  profitShares, updateProfitShares  } = useData();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const monthlyStats = useMonthlyStats({ orders, archivedOrders, transactions, products });
+
+  const handleProfitChange = (monthKey, value) => {
+    const val = value === '' ? null : (parseInt(value) || 0);
+    updateProfitShares({
+      ...profitShares,
+      customProfits: {
+        ...(profitShares?.customProfits || {}),
+        [monthKey]: val
+      }
+    });
+  };
 
   const handleWorkshopChange = (monthKey, value) => {
     const val = parseInt(value) || 0;
@@ -100,7 +113,8 @@ const ProfitSharing = () => {
               {/* Note: monthlyStats is sorted descending by default, let's sort it ascending for this table */}
               {[...monthlyStats].reverse().map(([monthKey, data]) => {
                 const override = historicalProfitShares[monthKey];
-                const netProfit = override ? override.profit : (data.sales - (data.cogs + data.admin + data.other));
+                const customProfit = profitShares?.customProfits?.[monthKey];
+                const netProfit = customProfit !== undefined && customProfit !== null ? customProfit : (override ? override.profit : (data.sales - (data.cogs + data.admin + data.other)));
                 const church50 = Math.round(netProfit * 0.50);
                 const fbWorkshop = profitShares?.workshopDeductions?.[monthKey];
                 const workshop = fbWorkshop !== undefined ? fbWorkshop : (override ? override.workshop : 0);
@@ -122,7 +136,15 @@ const ProfitSharing = () => {
                 return (
                   <tr key={monthKey}>
                     <td style={tdStyle}>{monthKey}</td>
-                    <td style={{...tdStyle, fontWeight: 'bold'}}>{netProfit.toLocaleString()}</td>
+                    <td style={{...tdStyle, fontWeight: 'bold', padding: '4px'}}>
+                      <input 
+                        type="number" 
+                        className="input-field"
+                        style={{ textAlign: 'center', padding: '4px', height: '30px', fontWeight: 'bold' }}
+                        value={customProfit !== undefined && customProfit !== null ? customProfit : netProfit} 
+                        onChange={(e) => handleProfitChange(monthKey, e.target.value)}
+                      />
+                    </td>
                     <td style={{...tdStyle, background: '#fdf2f8'}}>{church50.toLocaleString()}</td>
                     <td style={{...tdStyle, background: '#fdf2f8', padding: '4px'}}>
                       <input 

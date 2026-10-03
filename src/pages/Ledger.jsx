@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
+import { useInventory } from '../context/InventoryContext';
 import { useData } from '../context/DataContext';
 import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Wallet, BarChart3, TrendingUp, ShoppingCart, Wrench, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Ledger = () => {
-  const { transactions, addTransaction, deleteTransaction, orders, archivedOrders, products } = useData();
+  const {  transactions, addTransaction, deleteTransaction, orders, archivedOrders } = useData();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [formData, setFormData] = useState({

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { Plus, MessageCircle, MapPin, Calendar, Hash, Download, List, LayoutGrid, Search } from 'lucide-react';
 import OrderModal from '../components/OrderModal';
@@ -8,7 +9,8 @@ import OrderDetailsModal from '../components/OrderDetailsModal';
 import PrintReportModal from '../components/PrintReportModal';
 const Dashboard = () => {
   const { users } = useAuth();
-  const { orders, columns, columnOrder, moveOrder } = useData();
+  const {      } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useInventory } from '../context/InventoryContext';
+import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { X, MessageCircle, Send, Phone, MapPin, Hash, Calendar, Trash2, Printer, Package, Edit } from 'lucide-react';
@@ -6,7 +8,9 @@ import { motion } from 'framer-motion';
 import OrderModal from './OrderModal';
 
 const OrderDetailsModal = ({ order, isDelivered, onClose }) => {
-  const { addNote, deleteOrder, updateOrder, archiveOrder } = useData();
+  const {       } = useData();
+  const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
+  const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const { users } = useAuth();
   const [noteText, setNoteText] = useState('');
   const [isEditing, setIsEditing] = useState(false);

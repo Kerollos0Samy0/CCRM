@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { ClientsProvider } from './context/ClientsContext';
+import { InventoryProvider } from './context/InventoryContext';
+import { OrdersProvider } from './context/OrdersContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import './index.css';
@@ -46,11 +49,17 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <DataProvider>
+      <OrdersProvider>
+        <InventoryProvider>
+      <ClientsProvider>
+        <DataProvider>
         <Router>
           <AppRoutes />
         </Router>
       </DataProvider>
+      </ClientsProvider>
+      </InventoryProvider>
+        </OrdersProvider>
     </AuthProvider>
   );
 }
