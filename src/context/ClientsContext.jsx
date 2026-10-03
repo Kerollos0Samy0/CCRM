@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 
@@ -7,38 +7,43 @@ const ClientsContext = createContext();
 export const ClientsProvider = ({ children }) => {
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const initialised = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'data', 'clients'), (docSnap) => {
-      if (docSnap.exists()) {
-        setClients(docSnap.data().items || []);
+    initialised.current = true;
+    const unsubscribe = onSnapshot(doc(db, 'crm', 'clients'), (docSnap) => {
+      if (docSnap.exists() && initialised.current) {
+        setClients(docSnap.data().clients || []);
       }
       setLoadingClients(false);
     });
-    return () => unsubscribe();
+    return () => {
+      initialised.current = false;
+      unsubscribe();
+    };
   }, []);
 
   const addClient = async (clientData) => {
     const newClients = [...clients, clientData];
     setClients(newClients);
-    await setDoc(doc(db, 'data', 'clients'), { items: newClients }, { merge: true });
+    await setDoc(doc(db, 'crm', 'clients'), { clients: newClients }, { merge: true });
   };
 
   const updateClient = async (updatedClient) => {
     const newClients = clients.map(c => c.id === updatedClient.id ? updatedClient : c);
     setClients(newClients);
-    await updateDoc(doc(db, 'data', 'clients'), { items: newClients });
+    await setDoc(doc(db, 'crm', 'clients'), { clients: newClients }, { merge: true });
   };
 
   const deleteClient = async (id) => {
     const newClients = clients.filter(c => c.id !== id);
     setClients(newClients);
-    await updateDoc(doc(db, 'data', 'clients'), { items: newClients });
+    await setDoc(doc(db, 'crm', 'clients'), { clients: newClients }, { merge: true });
   };
 
   const replaceClients = async (newClientsArray) => {
     setClients(newClientsArray);
-    await setDoc(doc(db, 'data', 'clients'), { items: newClientsArray }, { merge: true });
+    await setDoc(doc(db, 'crm', 'clients'), { clients: newClientsArray }, { merge: true });
   };
 
   return (
