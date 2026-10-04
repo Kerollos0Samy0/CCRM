@@ -9,13 +9,27 @@ import OrderDetailsModal from '../components/OrderDetailsModal';
 import PrintReportModal from '../components/PrintReportModal';
 const Dashboard = () => {
   const { users } = useAuth();
-  const {      } = useData();
+  const { addTask } = useData();
   const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleMoveOrder = (sourceId, destId, sourceIndex, destIndex, orderId) => {
+    if (destId === 'designing' && sourceId !== 'designing') {
+      const order = orders[orderId];
+      if (order) {
+        addTask({
+          title: `تصميم أوردر: ${order.name}`,
+          description: `مطلوب عمل تصميم لأوردر العميل ${order.name} - الكنيسة: ${order.church || 'غير محدد'}`,
+          assigneeId: 'kirolos'
+        });
+      }
+    }
+    moveOrder(sourceId, destId, sourceIndex, destIndex, orderId);
+  };
 
   const onDragEnd = (result) => {
     const { destination, source, draggableId } = result;
@@ -31,7 +45,7 @@ const Dashboard = () => {
       }
     }
 
-    moveOrder(source.droppableId, destination.droppableId, source.index, destination.index, draggableId);
+    handleMoveOrder(source.droppableId, destination.droppableId, source.index, destination.index, draggableId);
   };
 
   const getUserColor = (userId) => {
@@ -176,7 +190,7 @@ const Dashboard = () => {
                               
                               const destIndex = columns[newColId].orderIds.length;
                               const sourceIndex = 0;
-                              moveOrder(columnId, newColId, sourceIndex, destIndex, order.id);
+                              handleMoveOrder(columnId, newColId, sourceIndex, destIndex, order.id);
                             }}
                           >
                             {columnOrder.map(cId => (
@@ -384,7 +398,7 @@ const Dashboard = () => {
                             
                             const destIndex = columns[newColId].orderIds.length;
                             const sourceIndex = columns[colId].orderIds.indexOf(order.id);
-                            moveOrder(colId, newColId, sourceIndex, destIndex, order.id);
+                            handleMoveOrder(colId, newColId, sourceIndex, destIndex, order.id);
                           }}
                         >
                           {columnOrder.map(cId => (
