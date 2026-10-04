@@ -3,6 +3,7 @@ import { useInventory } from '../context/InventoryContext';
 import { useOrders } from '../context/OrdersContext';
 import { useData } from '../context/DataContext';
 import { useClients } from '../context/ClientsContext';
+import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -163,6 +164,7 @@ const OrderModal = ({ onClose, orderToEdit }) => {
   const { orders, archivedOrders, columns, columnOrder, addOrder, updateOrder, deleteOrder, moveOrder, addNote, archiveOrder } = useOrders();
   const { products, supplies, addProduct, updateProduct, replaceProducts, addSupply } = useInventory();
   const { clients, addClient } = useClients();
+  const { currentUser } = useAuth();
   const defaultDeadline = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const [formData, setFormData] = useState(() => {
@@ -346,6 +348,7 @@ const OrderModal = ({ onClose, orderToEdit }) => {
       });
     } else {
       addOrder({
+        createdBy: currentUser.id,
         ...formData,
         totalAmount,
         remainingAmount
