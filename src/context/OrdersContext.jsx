@@ -133,7 +133,7 @@ export const OrdersProvider = ({ children }) => {
     });
   };
 
-  const moveOrder = (orderId, sourceColId, destinationColId, sourceIndex, destinationIndex) => {
+  const moveOrder = (sourceColId, destinationColId, sourceIndex, destinationIndex, orderId) => {
     if (!orders[orderId]) return;
     
     const start = columns[sourceColId];
