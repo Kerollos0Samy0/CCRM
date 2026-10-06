@@ -26,7 +26,7 @@ export const OrdersProvider = ({ children }) => {
   const lastSavedState = useRef('');
 
   useEffect(() => {
-    const mainRef = doc(db, 'crm', 'main');
+    const mainRef = doc(db, 'crm', 'v3_main');
     let unsubMain;
 
     const bootstrap = async () => {
@@ -80,7 +80,7 @@ export const OrdersProvider = ({ children }) => {
     
     const timeout = setTimeout(() => {
       const cleanData = JSON.parse(JSON.stringify({ orders, columns, archivedOrders }));
-      setDoc(doc(db, 'crm', 'main'), cleanData, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'crm', 'v3_main'), cleanData, { merge: true }).catch(console.error);
       lastSavedState.current = currentStateString;
     }, 500);
     

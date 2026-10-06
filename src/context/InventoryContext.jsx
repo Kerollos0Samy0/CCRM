@@ -15,8 +15,8 @@ export const InventoryProvider = ({ children }) => {
 
   useEffect(() => {
     initialised.current = true;
-    const productsRef = doc(db, 'crm', 'products');
-    const suppliesRef = doc(db, 'crm', 'supplies');
+    const productsRef = doc(db, 'crm', 'v3_products');
+    const suppliesRef = doc(db, 'crm', 'v3_supplies');
 
     let unsubProducts, unsubSupplies;
 
@@ -69,18 +69,18 @@ export const InventoryProvider = ({ children }) => {
   const addProduct = (data) => {
     const newProducts = [...products, { id: uuidv4(), ...data, stock: Number(data.stock)||0, buyPrice: Number(data.buyPrice)||0, sellPrice: Number(data.sellPrice)||0 }];
     setProducts(newProducts);
-    setDoc(doc(db, 'crm', 'products'), { products: newProducts }, { merge: true }).catch(console.error);
+    setDoc(doc(db, 'crm', 'v3_products'), { products: newProducts }, { merge: true }).catch(console.error);
   };
 
   const updateProduct = (id, fields) => {
     const newProducts = products.map(p => p.id === id ? { ...p, ...fields } : p);
     setProducts(newProducts);
-    setDoc(doc(db, 'crm', 'products'), { products: newProducts }, { merge: true }).catch(console.error);
+    setDoc(doc(db, 'crm', 'v3_products'), { products: newProducts }, { merge: true }).catch(console.error);
   };
 
   const replaceProducts = async (newProducts) => {
     try {
-      await setDoc(doc(db, 'crm', 'products'), { products: newProducts });
+      await setDoc(doc(db, 'crm', 'v3_products'), { products: newProducts });
       setProducts(newProducts);
     } catch (e) {
       console.error('Failed to replace products:', e);
@@ -95,7 +95,7 @@ export const InventoryProvider = ({ children }) => {
         }
         return p;
       });
-      setDoc(doc(db, 'crm', 'products'), { products: next }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'crm', 'v3_products'), { products: next }, { merge: true }).catch(console.error);
       return next;
     });
 
@@ -110,7 +110,7 @@ export const InventoryProvider = ({ children }) => {
         supplierName: currentUser ? (currentUser.name || currentUser.id) : 'unknown',
         notes: details.notes || ''
       }, ...prev];
-      setDoc(doc(db, 'crm', 'supplies'), { supplies: next }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'crm', 'v3_supplies'), { supplies: next }, { merge: true }).catch(console.error);
       return next;
     });
   };

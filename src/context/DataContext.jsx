@@ -14,8 +14,8 @@ export const DataProvider = ({ children }) => {
   const [transactions, setTransactions] = useState([]);
   const [profitShares, setProfitShares] = useState({ workshopDeductions: {}, withdrawals: {} });
 
-  const tasksRef = doc(db, 'crm', 'tasks');
-  const ledgerRef = doc(db, 'crm', 'ledger');
+  const tasksRef = doc(db, 'crm', 'v3_tasks');
+  const ledgerRef = doc(db, 'crm', 'v3_ledger');
 
   const initialised = useRef(false);
 
@@ -84,7 +84,7 @@ export const DataProvider = ({ children }) => {
 
   const updateProfitShares = (newProfitShares) => {
     setProfitShares(newProfitShares);
-    setDoc(doc(db, 'crm', 'ledger'), { profitShares: newProfitShares }, { merge: true }).catch(console.error);
+    setDoc(doc(db, 'crm', 'v3_ledger'), { profitShares: newProfitShares }, { merge: true }).catch(console.error);
   };
 
   const addTask = (taskData) => {
